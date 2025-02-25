@@ -1,0 +1,13 @@
+Ruta del proyecto dentro del servidor: /home/devcortes/Projects/FacturadorPro7/app/pro-51
+----------------------------------------------
+URL: facturador-pro7.dnt
+Correo para administrador: admin@facturador-pro7.dnt
+Contraseña para administrador: ZeTr9fyF2q
+----------------------------------------------
+Acceso remoto a Mysql
+Contraseña para root: XqNUtz0NZePYUY99agSD
+
+----------------------------------------------
+Clave SSH para añadir en gitlab.com/-/profile/keys
+
+

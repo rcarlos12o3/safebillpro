@@ -1,0 +1,14 @@
+{
+    "name": "QrChatBuho",
+    "alias": "qrchatbuho",
+    "description": "",
+    "keywords": [],
+    "active": 1,
+    "order": 0,
+    "providers": [
+        "Modules\\QrChatBuho\\Providers\\QrChatBuhoServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

@@ -1,0 +1,14 @@
+{
+    "name": "MultiUser",
+    "alias": "multiuser",
+    "description": "",
+    "keywords": [],
+    "active": 1,
+    "order": 0,
+    "providers": [
+        "Modules\\MultiUser\\Providers\\MultiUserServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

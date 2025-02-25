@@ -1,0 +1,14 @@
+{
+    "name": "QrApi",
+    "alias": "qrapi",
+    "description": "",
+    "keywords": [],
+    "active": 1,
+    "order": 0,
+    "providers": [
+        "Modules\\QrApi\\Providers\\QrApiServiceProvider"
+    ],
+    "aliases": {},
+    "files": [],
+    "requires": []
+}

@@ -1,0 +1,100 @@
+<template>
+    <div>
+        <div class="page-header pr-0">
+            <h2><a href="/list-reports">
+                <svg  xmlns="http://www.w3.org/2000/svg" style="margin-top: -5px;" width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-file-analytics"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M9 17l0 -5" /><path d="M12 17l0 -1" /><path d="M15 17l0 -3" /></svg>
+            </a></h2>
+            <ol class="breadcrumbs">
+                <li class="active"><span> Análisis comercial </span></li>
+            </ol>
+        </div>
+        <div class="card mb-0 pt-2 pt-md-0 tab-content-default row-new">
+            <!-- <div class="card-header bg-info">
+                <h3 class="my-0">Análisis comercial</h3>
+            </div> -->
+            <div class="card mb-0">
+                    <div class="card-body">
+                        <data-table :resource="resource">
+                                <tr slot="heading">
+                                <th class="">#</th>
+                                <th class="">Cliente</th>
+                                <th class="">T. Doc - N° Doc</th>
+                                <th class="">Zona</th>
+                                <th class="">Celular</th> 
+                                <th class="">Primera compra</th> 
+                                <th class="">Ultima compra</th> 
+                                <th class="">Tiempo promedio</th> 
+                                <th class="">Cant. Visita</th> 
+                                <th class="">Total</th> 
+    
+                                <th v-for="c in columns">{{c.toUpperCase()}}</th>
+    
+                               <!-- <th class="">Cinta</th> 
+                                <th class="">Disco</th> 
+                                <th class="">Cuchilla</th> 
+                                <th class="">Estelitado</th> 
+                                <th class="">Servicio</th> 
+                                <th class="">Accesorios</th> -->
+    
+                                <th class="">Contactar el</th> 
+                            <tr>
+                            <tr slot-scope="{ index, row }">
+                                <td>{{ index }}</td> 
+                                <td>{{row.customer_name}}</td>
+                                <td>{{row.customer_doc }} - {{ row.customer_number }}<br/></td> 
+                                <td>{{row.zone}}</td> 
+                                <td>{{row.telephone}}</td> 
+                                <td>{{row.first_document_date}}</td> 
+                                <td>{{row.last_document_date}}</td> 
+                                <td>{{row.prom_difference_days}}</td> 
+                                <td>{{row.quantity_visit}}</td> 
+                                <td>{{row.total}}</td>
+    
+                                <td v-for="c in columns">{{row[c.toUpperCase()]}}</td>
+    
+                                <!--<td>{{row.cinta}}</td> 
+                                <td>{{row.disco}}</td> 
+                                <td>{{row.cuchilla}}</td> 
+                                <td>{{row.estelitado}}</td> 
+                                <td>{{row.servicio}}</td> 
+                                <td>{{row.accesorios}}</td> -->
+    
+                                <td>{{row.contact_date}}</td> 
+                              
+                            </tr>
+                            
+                        </data-table>
+                         
+                        
+                    </div> 
+            </div>
+     
+        </div>
+    </div>
+</template>
+
+<script>
+ 
+    import DataTable from '../../components/DataTableCommercialAnalysis.vue'
+
+    export default { 
+        components: {DataTable},
+        data() {
+            return {
+                resource: 'reports/commercial-analysis',                 
+                form: {}, 
+                columns: []
+
+            }
+        },
+        async created() {
+
+            await this.$http.get(`/${this.resource}/columns`).then((response) => {
+                this.columns = response.data.categories
+            });
+        },
+        methods: { 
+            
+        }
+    }
+</script>
