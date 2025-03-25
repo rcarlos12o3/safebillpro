@@ -15,6 +15,7 @@ class TenantInventoryTransactionsTable extends Migration
     public function up()
     {
         Schema::create('inventory_transactions', function (Blueprint $table) {
+            $table->increments('indice');
             $table->string('id')->index(); 
             $table->string('name'); 
             $table->enum('type', ['input', 'output']);
