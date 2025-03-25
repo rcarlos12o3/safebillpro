@@ -58,8 +58,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_document_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('short')->nullable();
             $table->string('description');
@@ -84,8 +84,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_currency_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('symbol')->nullable();
             $table->string('description');
@@ -102,8 +102,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_unit_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('symbol')->nullable();
             $table->string('description');
@@ -130,8 +130,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_identity_document_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -155,8 +155,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_affectation_igv_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->boolean('exportation')->nullable();
             $table->boolean('free')->nullable();
@@ -191,8 +191,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_system_isc_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -209,8 +209,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_note_credit_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -236,8 +236,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_note_debit_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -256,8 +256,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_related_tax_document_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -277,8 +277,8 @@ class TenantCatalogsTable extends Migration
          ***************************************************************************************************************
          */
         Schema::create('cat_other_tax_concept_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -305,7 +305,7 @@ class TenantCatalogsTable extends Migration
          */
 //        Schema::create('codes', function (Blueprint $table) {
 //            $table->string('id');
-$table->primary('id');
+//            $table->primary('id');
 //            $table->char('catalog_id', 2);
 //            $table->string('code');
 //            $table->string('description');
@@ -372,8 +372,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_price_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -390,7 +390,7 @@ $table->primary('id');
          */
 //        Schema::create('codes', function (Blueprint $table) {
 //            $table->string('id');
-$table->primary('id');
+//            $table->primary('id');
 //            $table->char('catalog_id', 2);
 //            $table->string('code');
 //            $table->string('description');
@@ -434,8 +434,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_transport_mode_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -451,8 +451,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_summary_status_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -469,8 +469,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_transfer_reason_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -493,8 +493,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_related_documents_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -514,8 +514,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_perception_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->decimal('percentage', 10, 2);
             $table->string('description');
@@ -533,8 +533,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_retention_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->decimal('percentage', 10, 2);
             $table->string('description');
@@ -551,8 +551,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_operation_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->boolean('exportation');
             $table->string('description');
@@ -588,8 +588,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_legend_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -616,8 +616,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_charge_discount_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->boolean('base');
             $table->enum('level', ['item', 'global']);
@@ -651,7 +651,7 @@ $table->primary('id');
          */
 //        Schema::create('codes', function (Blueprint $table) {
 //            $table->string('id');
-$table->primary('id');
+//            $table->primary('id');
 //            $table->char('catalog_id', 2);
 //            $table->string('code');
 //            $table->string('description');
@@ -708,8 +708,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_attribute_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });
@@ -818,8 +818,8 @@ $table->primary('id');
          ***************************************************************************************************************
          */
         Schema::create('cat_payment_method_types', function (Blueprint $table) {
-            $table->string('id');
-            $table->primary('id');
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
         });

@@ -15,7 +15,8 @@ class TenantLocationTable extends Migration
     public function up()
     {
         Schema::create('countries', function (Blueprint $table) {
-            $table->char('id', 2)->primary();
+            $table->increments('indice');
+            $table->char('id', 2)->index();
             $table->string('description');
             $table->boolean('active')->default(true);
         });
