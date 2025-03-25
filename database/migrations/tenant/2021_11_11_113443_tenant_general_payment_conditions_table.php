@@ -15,7 +15,8 @@ class TenantGeneralPaymentConditionsTable extends Migration
     {
 
         Schema::create('general_payment_conditions', function (Blueprint $table) {
-            $table->string('id')->primary();
+            $table->increments('indice');
+            $table->string('id')->index();
             $table->string('name');
         });
 
