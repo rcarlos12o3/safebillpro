@@ -16,6 +16,7 @@ class TenantCatDetractionTypesTable extends Migration
     {
         
         Schema::create('cat_detraction_types', function (Blueprint $table) {
+            $table->increments('indice');
             $table->string('id')->index();
             $table->boolean('active');
             $table->string('description');
