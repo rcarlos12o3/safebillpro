@@ -15,6 +15,7 @@ class TenantCatAddressTypesTable extends Migration
     { 
 
         Schema::create('cat_address_types', function (Blueprint $table) {
+            $table->increments('inidice');
             $table->string('id')->primary();
             $table->string('description');
         });
