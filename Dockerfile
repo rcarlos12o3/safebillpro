@@ -18,7 +18,7 @@ RUN apt-get install -y git
 RUN apt-get install -y curl
 RUN apt-get install -y nano
 
-RUN docker-php-ext-configure gd --with-freetype-dir --with-jpeg-dir
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-configure curl --with-curl
 RUN docker-php-ext-install gd
 RUN docker-php-ext-install pdo_mysql
