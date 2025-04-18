@@ -137,7 +137,6 @@
     <!-- Theme Base, Components and Settings -->
     <script src="{{asset('porto-light/js/theme.js')}}"></script>
 
-<?php echo config('app.limite_reseller'); ?>
 <script>
 var btn_crear_cliente = document.querySelector('#client-list .card-body .row .col button');
 var tabla_clientes = document.querySelector('#client-list .table');

@@ -15,10 +15,9 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         App\Models\System\User::create([
-            'name' => 'Administrador',
-            'email' => 'admin@gmail.com',
-            'password' => bcrypt('123456'),
-            'api_token' => Str::random(60),
+            'name' => 'Safebill',
+            'email' => 'admin@safebill.dev',
+            'password' => bcrypt('Safebill@2025'),
         ]);
  
 
