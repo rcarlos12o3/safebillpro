@@ -16,11 +16,9 @@ class DatabaseSeeder extends Seeder
     {
         App\Models\System\User::create([
             'name' => 'Administrador',
-            'email' => 'admin@gmail.com',
-            'password' => bcrypt('123456'),
-            'api_token' => Str::random(60),
+            'email' => 'admin@safebill.dev',
+            'password' => bcrypt('qdSaO4mwUt'),
         ]);
- 
 
         DB::table('plan_documents')->insert([
             ['id' => 1, 'description' => 'Facturas, boletas, notas de débito y crédito, resúmenes y anulaciones' ],

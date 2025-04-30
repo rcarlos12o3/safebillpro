@@ -14,7 +14,8 @@ class TenantTransactionStatesTable extends Migration
     public function up()
     {
         Schema::create('transaction_states', function (Blueprint $table) {
-            $table->string('id')->primary();
+	    $table->increments('indice');
+            $table->string('id')->index();
             $table->string('name')->index();
             $table->boolean('success')->index();
             $table->string('status')->index();

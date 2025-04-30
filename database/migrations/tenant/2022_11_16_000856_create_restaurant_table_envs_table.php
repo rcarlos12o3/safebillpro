@@ -14,7 +14,7 @@ class CreateRestaurantTableEnvsTable extends Migration
     public function up()
     {
         Schema::create('restaurant_table_envs', function (Blueprint $table) {
-            $table->unsignedInteger('id')->primary()->unique()->unique();
+            $table->increments('id');
             $table->string('name');
             $table->boolean('active');
             $table->integer('tables_quantity');

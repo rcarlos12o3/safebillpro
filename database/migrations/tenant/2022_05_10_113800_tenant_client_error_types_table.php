@@ -15,7 +15,8 @@ class TenantClientErrorTypesTable extends Migration
     {
         
         Schema::create('client_error_types', function (Blueprint $table) {
-            $table->string('id')->primary();
+	    $table->increments('indice');
+            $table->string('id')->index();
             $table->string('name');
         });
 

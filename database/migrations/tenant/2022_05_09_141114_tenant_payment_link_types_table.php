@@ -15,10 +15,9 @@ class TenantPaymentLinkTypesTable extends Migration
     {
 
         Schema::create('payment_link_types', function (Blueprint $table) {
-
-            $table->char('id', 2)->primary();
+	    $table->increments('indice');
+            $table->char('id', 2)->index();
             $table->string('description');
-            
         });
 
 
