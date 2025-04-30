@@ -15,9 +15,9 @@ class DatabaseSeeder extends Seeder
     public function run()
     {
         App\Models\System\User::create([
-            'name' => 'Administrador',
+            'name' => 'Safebill',
             'email' => 'admin@safebill.dev',
-            'password' => bcrypt('qdSaO4mwUt'),
+            'password' => bcrypt('Safebill@2025'),
         ]);
 
         DB::table('plan_documents')->insert([
