@@ -1,53 +1,64 @@
 FROM php:7.4-apache
 
+# Configurar Apache Document Root
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-RUN apt-get update
-RUN apt-get install -y libpng-dev
-RUN apt-get install -y libjpeg-dev
-RUN apt-get install -y libfreetype6-dev
-RUN apt-get install -y libxml2-dev
-RUN apt-get install -y libzip-dev
-RUN apt-get install -y libicu-dev
-RUN apt-get install -y libxslt1-dev
-RUN apt-get install -y libcurl4-openssl-dev
-RUN apt-get install -y unzip
-RUN apt-get install -y git
-RUN apt-get install -y curl
-RUN apt-get install -y nano
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libxml2-dev \
+    libzip-dev \
+    libicu-dev \
+    libxslt1-dev \
+    libcurl4-openssl-dev \
+    libonig-dev \
+    unzip \
+    git \
+    curl \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
 
+# Configurar extensiones PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 RUN docker-php-ext-configure curl --with-curl
-RUN docker-php-ext-install gd
-RUN docker-php-ext-install pdo_mysql
-RUN docker-php-ext-install bcmath
-RUN docker-php-ext-install curl
-RUN docker-php-ext-install fileinfo
-RUN docker-php-ext-install mbstring
-RUN docker-php-ext-install xml
-RUN docker-php-ext-install zip
-RUN docker-php-ext-install soap
-RUN docker-php-ext-install simplexml
-RUN docker-php-ext-install xsl
-RUN docker-php-ext-install exif
-RUN docker-php-ext-install intl
-RUN docker-php-ext-install tokenizer
-RUN pecl install redis-5.3.7 
-RUN docker-php-ext-enable redis
 
+# Instalar extensiones PHP (mbstring ya viene incluido en PHP 7.4)
+RUN docker-php-ext-install \
+    gd \
+    pdo_mysql \
+    bcmath \
+    curl \
+    fileinfo \
+    xml \
+    zip \
+    soap \
+    simplexml \
+    xsl \
+    exif \
+    intl
+
+# Instalar Redis
+RUN pecl install redis-5.3.7 && docker-php-ext-enable redis
+
+# Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Instalar Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
     && apt-get install -y nodejs
 
-RUN rm -rf /var/lib/apt/lists/*
-
+# Habilitar mod_rewrite de Apache
 RUN a2enmod rewrite
 
+# Configurar directorio de trabajo
 WORKDIR /var/www/html
 
+# Copiar código de la aplicación
 COPY . .
 
+# Configurar permisos
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
