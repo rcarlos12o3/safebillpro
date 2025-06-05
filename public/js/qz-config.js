@@ -1,0 +1,55 @@
+// Obtener certificado embebido
+var certificateText = `-----BEGIN CERTIFICATE-----
+MIIEDTCCAvWgAwIBAgIUJuX/k4ufrrZjLiucMGyJ04YZDNQwDQYJKoZIhvcNAQEL
+BQAwgZUxCzAJBgNVBAYTAlBFMQ0wCwYDVQQIDARMaW1hMQ0wCwYDVQQHDARMaW1h
+MRkwFwYDVQQKDBBJTUFHSU5BVElDU19QRVJVMQswCQYDVQQLDAJJVDEXMBUGA1UE
+AwwOKi5zYWZlYmlsbC5kZXYxJzAlBgkqhkiG9w0BCQEWGGluZm9AaW1hZ2luYXRp
+Y3NwZXJ1LmNvbTAeFw0yNTA2MDIyMjQ4MjVaFw0zNTA1MzEyMjQ4MjVaMIGVMQsw
+CQYDVQQGEwJQRTENMAsGA1UECAwETGltYTENMAsGA1UEBwwETGltYTEZMBcGA1UE
+CgwQSU1BR0lOQVRJQ1NfUEVSVTELMAkGA1UECwwCSVQxFzAVBgNVBAMMDiouc2Fm
+ZWJpbGwuZGV2MScwJQYJKoZIhvcNAQkBFhhpbmZvQGltYWdpbmF0aWNzcGVydS5j
+b20wggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCHQJLHeGbQ1hvqLi0Y
+YZO/sMoJdAoxvwsVaOerJV3MNlQOFFkdYUS/dNpnvwI+Duoqv7ekKPUrQze1J/yl
+e/Cu735wxb9XmzbRb0i6NthdhgvCrU3aAl3l7ZAu/kY7ZpNit5E5nERt85z4zZlQ
+nFl0A8drHP3LekKWgNV+N1CrSUUJtJc7QQWqdEQNmsEe0E0u2yrmfQzhILoVlTlg
+iG8uGJFH4pdzuNgafQJS9ovS6ctMilp+xUEnuiSgeR60hIr9z3YWU/jUl4llfbKt
+Hn3Ar+foF2bmBAMeLSWxt63FvoABpFdn7HferfgD+SihlodQlb65QyxUwvdpIkiJ
+wMIdAgMBAAGjUzBRMB0GA1UdDgQWBBQMFY5/lejhxrBoI3DoLfuzZylq/zAfBgNV
+HSMEGDAWgBQMFY5/lejhxrBoI3DoLfuzZylq/zAPBgNVHRMBAf8EBTADAQH/MA0G
+CSqGSIb3DQEBCwUAA4IBAQBUfRUeJqDmW/9bzb5P2vvUa0tbTV9f8rsgxn+uDghA
+4PU4np2onE0L3RSwEmwEPQczIuoWxf3GUoTWWYpwiN5bpColG+h1GzMWhDvhrzyp
+9SwlIzsNE+jCgk/2j3StKJDEe5CKt2vcGLRnI7gsg0WQalo/ON8InejFHxFO/677
+0+DgEIjxFoFH6L8sVFEEesbh0mzUO7Ge2pDa9ii3KfDAF3xY0MLEzGM1KZ2AmBl2
+5zEdIlAsnHFf9q3agp928zBU2XLgkPSaYlpuW0Q7ywJwieByUou4Ay4fnvysD9Nv
+PvnRMDgwpBzsvWxRQkVcBIQ6sCmuCYdVh0dpN89ItJQy
+-----END CERTIFICATE-----`;
+
+// Configuración QZ-Tray embebida
+var qzConfig = {
+    certificate: certificateText
+};
+
+// Función simplificada
+function initializeQZWithCertificates() {
+    var currentDomain = window.location.hostname;
+    console.log('🚀 Conectando QZ con certificado embebido para:', currentDomain);
+    
+    return qz.websocket.connect(qzConfig)
+        .then(function() {
+            console.log('✅ QZ-Tray conectado CON certificado para:', currentDomain);
+            findVersion();
+            findDefaultPrinter(true);
+            return true;
+        })
+        .catch(function(err) {
+            console.error('❌ Error con certificado embebido:', err);
+            // Fallback sin certificados
+            return qz.websocket.connect()
+                .then(function() {
+                    console.log('⚠️ QZ-Tray conectado SIN certificados');
+                    findVersion();
+                    findDefaultPrinter(true);
+                    return false;
+                });
+        });
+}

@@ -46,6 +46,7 @@
     <script src="{{ asset('js/rsvp-3.1.0.min.js') }}"></script>
     <script src="{{ asset('js/jsrsasign-all-min.js') }}"></script>
     <script src="{{ asset('js/sign-message.js') }}"></script>
+    <script src="{{ asset('js/qz-config.js') }}"></script>  <!-- NUEVO -->
     <script src="{{ asset('js/function-qztray.js') }}"></script>
     <!-- END QZ -->
 
