@@ -1,74 +1,40 @@
-# Laravel
-/vendor
 /node_modules
 /public/hot
+/public/downloads
+public/cookie.txt
 /public/storage
+/public/padron_extract/*
+/public/padron_rar/*
 /storage/*.key
-/storage/certificates/
-bootstrap/cache/*.php
-bootstrap/cache/packages.php
-bootstrap/cache/services.php
-
-# Environment files
-.env
-.env.local
-.env.backup
-.env.production
-.env.testing
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Docker local development
-docker-compose.override.yml
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-storage/logs/*.log
-
-# Certificates and keys
-*.pem
-*.key
-*.crt
-*.p12
-public/certificates/
-public/*.pem
-
-# Backups
-*.sql
-*.dump
-*.backup
-
-# Compiled assets (if you want to ignore them)
-/public/js/app.js
-/public/css/app.css
-/public/mix-manifest.json
-
-# Laravel specific
-.phpunit.result.cache
+/storage/backups/*
+/storage/framework/laravel-excel/*
+/vendor
+/vendor_
+/.idea
+/.vscode
+/.vagrant
 Homestead.json
 Homestead.yaml
-auth.json
-/public/vendor
-/resources/lang/vendor
+npm-debug.log
+yarn-error.log
+.env
+.phpunit.result.cache
+access_log
+error_log
+.env.dusk
+.env.dusk.local
+debug.log
+phpunit.dusk.xml
+docker-compose.yml
+composer.lock
+/ssh
+/.project
+app/CoreFacturalo/Templates/pdf/personalizada*
+public/templates/pdf/personalizada*
+supervisor.conf
 
-# Large files that shouldn't be in git
-*.zip
-mpdf.zip
 
-# Archivos de configuración específicos del servidor
-nginx.conf
+
+**/.DS_Store
+public/porto-light/js/bloquear_cliente.js
+.codegpt

@@ -7,6 +7,11 @@
             <ol class="breadcrumbs">
                 <li class="active"><span>Comprobantes pendientes de rectificación</span> </li>
             </ol>
+            <div class="actions">
+                <el-button type="danger" @click.prevent="clickClearAll" v-if="!isClient">
+                    <i class="el-icon-delete"></i> Limpiar todos
+                </el-button>
+            </div>
         </div>
         <div class="card tab-content-default row-new mb-0" v-loading="loading_submit">
             <div class="card-body ">
@@ -160,6 +165,31 @@
                     })
             },
             */
+            clickClearAll() {
+                this.$confirm('¿Está seguro de limpiar todas las notificaciones? Esta acción eliminará todos los documentos de esta lista.', 'Confirmación', {
+                    confirmButtonText: 'Sí, limpiar',
+                    cancelButtonText: 'Cancelar',
+                    type: 'warning'
+                }).then(() => {
+                    this.loading_submit = true
+                    this.$http.post('/documents/regularize-shipping/clear-all')
+                        .then(response => {
+                            if (response.data.success) {
+                                this.$message.success(response.data.message)
+                                this.$eventHub.$emit('reloadData')
+                            } else {
+                                this.$message.error(response.data.message)
+                            }
+                        })
+                        .catch(error => {
+                            this.$message.error(error.response.data.message)
+                        }).then(() => {
+                            this.loading_submit = false
+                        })
+                }).catch(() => {
+                    this.$message.info('Operación cancelada')
+                })
+            },
             clickOptions(recordId = null) {
                 this.recordId = recordId
                 this.showDialogOptions = true

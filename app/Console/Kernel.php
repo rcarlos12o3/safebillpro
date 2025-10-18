@@ -29,7 +29,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('status:server')->hourly();
         // Llena las tablas para libro mayor - Se desactiva CMAR - buscar opcion de url
         // $schedule->command('account_ledger:fill')->hourly();
-        
+$schedule->command('tenancy:run online:send-all')->dailyAt('03:00'); 
+$schedule->command('tenancy:run online:send-all')->dailyAt('07:00');
+$schedule->command('tenancy:run online:send-all')->dailyAt('13:00');
+$schedule->command('tenancy:run online:send-all')->dailyAt('23:00');        
         //restaurar base de datos demo para restaurant
         // $schedule->command('database:restoredemo')->dailyAt('23:50');
     }

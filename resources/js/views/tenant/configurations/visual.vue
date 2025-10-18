@@ -184,10 +184,12 @@
             },
             toggleWelcomeComponent() {
                 const welcomeComponent = document.querySelector('.welcome-component');
-                if (this.showWelcome) {
-                    welcomeComponent.style.display = 'block';
-                } else {
-                    welcomeComponent.style.display = 'none';
+                if (welcomeComponent) {
+                    if (this.showWelcome) {
+                        welcomeComponent.style.display = 'block';
+                    } else {
+                        welcomeComponent.style.display = 'none';
+                    }
                 }
             },
             applyTheme(theme) {

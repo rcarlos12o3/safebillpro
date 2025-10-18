@@ -39,7 +39,9 @@ class PosController extends Controller
     {
         $cash = Cash::where([['user_id', auth()->user()->id], ['state', true]])->first();
 
-        if (!$cash) return redirect()->route('tenant.cash.index');
+        if (!$cash) {
+            return redirect()->route('tenant.cash.index')->with('error', 'Para acceder al POS, primero debe aperturar una caja.');
+        }
 
         $configuration = Configuration::first();
 
@@ -488,7 +490,9 @@ class PosController extends Controller
     {
         $cash = Cash::where([['user_id', auth()->user()->id], ['state', true]])->first();
 
-        if (!$cash) return redirect()->route('tenant.cash.index');
+        if (!$cash) {
+            return redirect()->route('tenant.cash.index')->with('error', 'Para acceder al POS Fast, primero debe aperturar una caja.');
+        }
 
         $configuration = Configuration::first();
 
@@ -503,7 +507,9 @@ class PosController extends Controller
     {
         $cash = Cash::where([['user_id', auth()->user()->id], ['state', true]])->first();
 
-        if (!$cash) return redirect()->route('tenant.cash.index');
+        if (!$cash) {
+            return redirect()->route('tenant.cash.index')->with('error', 'Para acceder al POS Garage, primero debe aperturar una caja.');
+        }
 
         $configuration = Configuration::first();
 

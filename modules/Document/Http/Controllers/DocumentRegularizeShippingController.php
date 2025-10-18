@@ -89,5 +89,29 @@ class DocumentRegularizeShippingController extends Controller
 
     }
 
+    public function clearAll(Request $request)
+    {
+        try {
+            // Actualizar todos los documentos marcados como regularize_shipping
+            $affected = Document::where('regularize_shipping', true)
+                ->whereTypeUser()
+                ->update([
+                    'regularize_shipping' => false,
+                    'response_regularize_shipping' => null
+                ]);
+
+            return [
+                'success' => true,
+                'message' => "Se limpiaron {$affected} documentos correctamente"
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error al limpiar documentos: ' . $e->getMessage()
+            ];
+        }
+    }
+
 
 }

@@ -1210,9 +1210,16 @@ export default {
         },
         async changeItem() {
 
-            this.form.item = { ..._.find(this.items, {'id': this.form.item_id}) }
+            const selectedItem = _.find(this.items, {'id': this.form.item_id});
+
+            if (!selectedItem) {
+                console.error('Item no encontrado');
+                return;
+            }
+
+            this.form.item = { ...selectedItem }
             // this.form.item = _.find(this.items, {'id': this.form.item_id});
-            this.form.item_unit_types = _.find(this.items, {'id': this.form.item_id}).item_unit_types
+            this.form.item_unit_types = selectedItem.item_unit_types || []
             this.form.unit_price_value = this.form.item.sale_unit_price;
             if(!this.configuration.enable_list_product && this.selectedOptionPrice !== 1) {
                 if(this.form.item_unit_types.length) {

@@ -73,6 +73,7 @@ if($current_hostname) {
                 Route::get('', 'DocumentRegularizeShippingController@index')->name('tenant.documents.regularize_shipping')->middleware('redirect.level');
                 Route::get('records', 'DocumentRegularizeShippingController@records');
                 Route::get('data_table', 'DocumentRegularizeShippingController@data_table');
+                Route::post('clear-all', 'DocumentRegularizeShippingController@clearAll');
 
             });
         });

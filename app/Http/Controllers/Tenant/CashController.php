@@ -427,7 +427,7 @@ class CashController extends Controller
 
         $pdf = PDF::loadView('tenant.cash.report_general_pdf', compact("cash_documents", "company"));
         $filename = "Reporte_POS";
-        return $pdf->download($filename.'.pdf');
+        return $pdf->stream($filename.'.pdf');
 
     }
     
