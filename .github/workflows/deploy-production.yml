@@ -1,10 +1,10 @@
 name: Test and Deploy to Production
 
 on:
-  push:
-    branches:
-      - main  # Se activa cuando haces push a la rama main
-  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub
+  workflow_dispatch:  # Solo ejecución manual hasta validar que funciona correctamente
+  # push:
+  #   branches:
+  #     - main  # Deshabilitado temporalmente - habilitar después de validar
 
 jobs:
   test:
@@ -92,6 +92,7 @@ jobs:
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
+            --exclude='vendor' \
             --exclude='tests' \
             --exclude='.env' \
             --exclude='.env.example' \
@@ -159,6 +160,17 @@ jobs:
             # Restaurar el .env de producción (no viene en el release)
             # El .env ya debe existir en el servidor
 
+            # Instalar dependencias de Composer en producción (vendor/ no viene en el artifact)
+            echo "Installing Composer dependencies..."
+            cd $DEPLOY_PATH
+            docker exec safebillpro-fpm composer install --prefer-dist --no-interaction --optimize-autoloader --no-dev
+
+            # Crear directorio temporal de mpdf y dar permisos
+            echo "Creating mpdf temp directory..."
+            mkdir -p vendor/mpdf/mpdf/tmp/mpdf
+            chown -R www-data:www-data vendor/mpdf/mpdf/tmp
+            chmod -R 775 vendor/mpdf/mpdf/tmp
+
             # Ajustar permisos
             echo "Setting permissions..."
             chown -R www-data:www-data $DEPLOY_PATH
@@ -196,20 +208,45 @@ jobs:
             echo "Backup saved at: $BACKUP_PATH/backup_$TIMESTAMP.tar.gz"
             echo "=========================================="
 
-      - name: Health check
-        run: |
-          echo "Waiting 10 seconds for services to restart..."
-          sleep 10
+      - name: Health check and automatic rollback
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            echo "Waiting 10 seconds for services to restart..."
+            sleep 10
 
-          # Verificar que el sitio responda
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://safebill.dev || echo "000")
+            # Verificar que el sitio responda
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://safebill.dev || echo "000")
 
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
-            echo "✅ Health check passed! Site is responding with HTTP $HTTP_CODE"
-          else
-            echo "⚠️ Warning: Site returned HTTP $HTTP_CODE"
-            exit 1
-          fi
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+              echo "✅ Health check passed! Site is responding with HTTP $HTTP_CODE"
+            else
+              echo "⚠️ Health check failed! Site returned HTTP $HTTP_CODE"
+              echo "🔄 Initiating automatic rollback..."
+
+              BACKUP_PATH="/var/www/backups/safebill"
+              DEPLOY_PATH="/var/www/safebill.dev/html"
+              LATEST_BACKUP=$(ls -t $BACKUP_PATH/backup_*.tar.gz | head -1)
+
+              if [ -n "$LATEST_BACKUP" ]; then
+                echo "Rolling back to: $LATEST_BACKUP"
+                cd $DEPLOY_PATH
+                tar -xzf $LATEST_BACKUP
+                docker exec safebillpro-fpm composer install --prefer-dist --no-interaction --optimize-autoloader --no-dev
+                docker exec safebillpro-fpm php artisan config:clear
+                docker exec safebillpro-fpm php artisan cache:clear
+                docker exec safebillpro-fpm php artisan view:clear
+                echo "✅ Rollback completed"
+              else
+                echo "❌ No backup found for rollback!"
+              fi
+
+              exit 1
+            fi
 
       - name: Notify deployment status
         if: always()
