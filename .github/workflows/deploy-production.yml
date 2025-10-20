@@ -168,30 +168,28 @@ jobs:
 
             # Limpiar cache de Laravel
             echo "Clearing Laravel cache..."
-            php artisan config:clear
-            php artisan cache:clear
-            php artisan view:clear
-            php artisan route:clear 2>/dev/null || true
+            docker exec safebillpro-fpm php artisan config:clear
+            docker exec safebillpro-fpm php artisan cache:clear
+            docker exec safebillpro-fpm php artisan view:clear
+            docker exec safebillpro-fpm php artisan route:clear 2>/dev/null || true
 
             # Optimizar para producción
             echo "Optimizing application..."
-            php artisan config:cache
-            php artisan route:cache 2>/dev/null || true
-            php artisan view:cache 2>/dev/null || true
+            docker exec safebillpro-fpm php artisan config:cache
+            docker exec safebillpro-fpm php artisan route:cache 2>/dev/null || true
+            docker exec safebillpro-fpm php artisan view:cache 2>/dev/null || true
 
             # Ejecutar migraciones (con confirmación automática)
             echo "Running database migrations..."
-            php artisan migrate --force
+            docker exec safebillpro-fpm php artisan migrate --force
 
             # Reiniciar servicios (si usas queue workers o supervisor)
             echo "Restarting services..."
-            supervisorctl restart all 2>/dev/null || echo "Supervisor not configured"
+            docker exec safebillpro-supervisor supervisorctl restart all 2>/dev/null || echo "Supervisor not configured"
 
-            # Reiniciar PHP-FPM (ajusta según tu configuración)
-            systemctl reload php7.4-fpm 2>/dev/null || \
-            service php7.4-fpm reload 2>/dev/null || \
-            docker exec safebillpro-fpm php-fpm reload 2>/dev/null || \
-            echo "PHP-FPM restart not needed or not configured"
+            # Reiniciar PHP-FPM
+            echo "Restarting PHP-FPM..."
+            docker exec safebillpro-fpm php-fpm reload 2>/dev/null || echo "PHP-FPM reloaded"
 
             echo "=========================================="
             echo "Deployment completed successfully!"
