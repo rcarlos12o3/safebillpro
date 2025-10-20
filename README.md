@@ -147,3 +147,177 @@ Validador documentos: [Guía](https://docs.google.com/document/d/1v6XpJrEwCx3suR
 [facturaloperu.com](http://facturaloperu.com "Clic")<br>
 soporte@facturaloperu.com<br>
 wsapp: 930 973 902<br>
+
+---
+
+# 🚀 Configuración de Desarrollo y Deployment (SafeBillPro)
+
+## 📚 Documentación Adicional
+
+- **[SETUP-LOCAL.md](./SETUP-LOCAL.md)** - Guía completa para configurar el ambiente de desarrollo local en Mac
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** - Guía de CI/CD y deployment automático con GitHub Actions
+
+## ⚡ Quick Start para Desarrollo Local
+
+### Ambiente de Desarrollo (Mac con Laravel Herd)
+
+```bash
+# 1. Clonar el repositorio
+cd ~/Herd/
+git clone https://github.com/rcarlos12o3/safebillpro.git
+cd safebillpro
+
+# 2. Crear base de datos local
+mysql -u root -e "CREATE DATABASE safebillpro_dev"
+
+# 3. Configurar .env para desarrollo
+cp .env.example .env
+# Editar .env: DB_DATABASE=safebillpro_dev, APP_DEBUG=true, FORCE_HTTPS=false
+
+# 4. Configurar permisos
+chmod -R 775 storage bootstrap/cache
+
+# 5. Ejecutar migraciones
+php artisan migrate --seed
+
+# 6. Compilar assets (usando Docker por compatibilidad con Apple Silicon)
+docker run --platform linux/amd64 --rm -v $(pwd):/app -w /app node:14 npm run production
+
+# 7. Abrir en navegador
+open http://safebillpro.test
+```
+
+Ver la guía completa en **[SETUP-LOCAL.md](./SETUP-LOCAL.md)**
+
+## 🔄 Deployment Automático a Producción
+
+### Flujo de trabajo automatizado
+
+```bash
+# 1. Desarrollar en local y probar
+# 2. Hacer commit de cambios
+git add .
+git commit -m "Feature: descripción de cambios"
+
+# 3. Push a GitHub - esto activa el deployment automáticamente
+git push origin main
+
+# GitHub Actions automáticamente:
+# ✅ Ejecuta tests
+# ✅ Compila assets
+# ✅ Crea backup en producción
+# ✅ Despliega código
+# ✅ Ejecuta migraciones
+# ✅ Reinicia servicios
+```
+
+Ver la guía completa en **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+## 🛠️ Stack Tecnológico Actual
+
+- **Backend:** Laravel 5.8 (PHP 7.4)
+- **Frontend:** Vue.js 2.5, Element UI
+- **Base de Datos:** MySQL/MariaDB 10.5
+- **CSS:** SASS (node-sass 4.14.1)
+- **Build:** Laravel Mix 3.0
+- **Servidor Web:** Nginx
+- **Multi-tenancy:** hyn/multi-tenant
+
+## 📦 Compilar Assets
+
+**Importante:** Este proyecto usa `node-sass@4.14.1` que no es compatible nativamente con Apple Silicon (M1/M2/M3). Por eso usamos Docker:
+
+```bash
+# Para desarrollo (con source maps)
+docker run --platform linux/amd64 --rm -v $(pwd):/app -w /app node:14 npm run dev
+
+# Para producción (optimizado y minificado)
+docker run --platform linux/amd64 --rm -v $(pwd):/app -w /app node:14 npm run production
+```
+
+## 🌐 Ambientes Configurados
+
+| Ambiente | URL | Servidor | Estado |
+|----------|-----|----------|--------|
+| **Producción** | https://safebill.dev | 206.189.215.101 | ✅ Activo |
+| **Desarrollo Local** | http://safebillpro.test | Mac (Laravel Herd) | ✅ Configurado |
+
+## 🔐 Configuración de GitHub Actions
+
+### Secretos Requeridos
+
+Para que el CI/CD funcione, configura estos secretos en GitHub:
+
+1. Ve a: Settings → Secrets and variables → Actions
+2. Agrega los siguientes secretos:
+
+| Secret | Valor | Descripción |
+|--------|-------|-------------|
+| `PRODUCTION_HOST` | `206.189.215.101` | IP del servidor |
+| `PRODUCTION_USER` | `root` | Usuario SSH |
+| `PRODUCTION_PORT` | `22` | Puerto SSH |
+| `PRODUCTION_SSH_KEY` | (clave privada) | SSH key para acceso |
+
+Ver instrucciones detalladas en **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+## 📊 CI/CD Status
+
+[![Deploy to Production](https://github.com/rcarlos12o3/safebillpro/actions/workflows/deploy-production.yml/badge.svg)](https://github.com/rcarlos12o3/safebillpro/actions/workflows/deploy-production.yml)
+[![Run Tests](https://github.com/rcarlos12o3/safebillpro/actions/workflows/tests.yml/badge.svg)](https://github.com/rcarlos12o3/safebillpro/actions/workflows/tests.yml)
+
+## 🔧 Comandos Útiles de Desarrollo
+
+```bash
+# Limpiar caches de Laravel
+php artisan config:clear && php artisan cache:clear && php artisan view:clear
+
+# Ver logs en tiempo real
+tail -f storage/logs/laravel-$(date +%Y-%m-%d).log
+
+# Ejecutar tests
+vendor/bin/phpunit
+
+# Ver rutas disponibles
+php artisan route:list
+
+# Compilar assets y ver cambios
+docker run --platform linux/amd64 --rm -v $(pwd):/app -w /app node:14 npm run dev
+```
+
+## 🐛 Solución de Problemas Comunes
+
+### Assets no compilan
+
+```bash
+rm -rf node_modules package-lock.json
+docker run --platform linux/amd64 --rm -v $(pwd):/app -w /app node:14 npm install
+docker run --platform linux/amd64 --rm -v $(pwd):/app -w /app node:14 npm run production
+```
+
+### Error de permisos
+
+```bash
+chmod -R 775 storage bootstrap/cache
+chown -R $(whoami):staff storage bootstrap/cache
+```
+
+### El sitio no carga después de deployment
+
+```bash
+# Conectar al servidor
+ssh root@206.189.215.101
+
+# Ver logs
+tail -f /var/www/safebill.dev/html/storage/logs/laravel-$(date +%Y-%m-%d).log
+
+# Limpiar cache
+cd /var/www/safebill.dev/html
+php artisan config:clear
+php artisan cache:clear
+```
+
+---
+
+**Versión:** Laravel 5.8.x
+**Última actualización configuración:** Octubre 2025
+**Repositorio:** https://github.com/rcarlos12o3/safebillpro

@@ -1,0 +1,178 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main  # Se activa cuando haces push a la rama main
+  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub
+
+jobs:
+  deploy:
+    name: Deploy to Production Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Obtiene todo el historial para mejor tracking
+
+      - name: Setup Node.js 14
+        uses: actions/setup-node@v3
+        with:
+          node-version: '14'
+          cache: 'npm'
+
+      - name: Setup PHP 7.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '7.4'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, bcmath, zip, soap
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: |
+          composer install --prefer-dist --no-interaction --no-dev --optimize-autoloader
+
+      - name: Install NPM dependencies
+        run: npm ci --prefer-offline --no-audit
+
+      - name: Compile assets for production
+        run: npm run production
+
+      - name: Create deployment artifact
+        run: |
+          mkdir -p deployment
+          tar -czf deployment/release.tar.gz \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='tests' \
+            --exclude='.env' \
+            --exclude='.env.example' \
+            --exclude='storage/logs/*' \
+            --exclude='storage/framework/cache/*' \
+            --exclude='storage/framework/sessions/*' \
+            --exclude='storage/framework/views/*' \
+            --exclude='deployment' \
+            .
+
+      - name: Upload artifact to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          source: "deployment/release.tar.gz"
+          target: "/tmp/"
+
+      - name: Deploy on production server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          port: ${{ secrets.PRODUCTION_PORT }}
+          script: |
+            set -e
+
+            echo "=========================================="
+            echo "Starting deployment process..."
+            echo "=========================================="
+
+            # Variables
+            DEPLOY_PATH="/var/www/safebill.dev/html"
+            BACKUP_PATH="/var/www/backups/safebill"
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+            # Crear directorio de backups si no existe
+            mkdir -p $BACKUP_PATH
+
+            # Backup del código actual (solo archivos críticos)
+            echo "Creating backup..."
+            cd $DEPLOY_PATH
+            tar -czf $BACKUP_PATH/backup_$TIMESTAMP.tar.gz \
+              --exclude='vendor' \
+              --exclude='node_modules' \
+              --exclude='storage/logs/*' \
+              --exclude='storage/framework/cache/*' \
+              --exclude='storage/framework/sessions/*' \
+              --exclude='storage/framework/views/*' \
+              .
+
+            # Mantener solo los últimos 5 backups
+            cd $BACKUP_PATH
+            ls -t backup_*.tar.gz | tail -n +6 | xargs rm -f 2>/dev/null || true
+
+            # Extraer el nuevo release
+            echo "Extracting new release..."
+            cd $DEPLOY_PATH
+            tar -xzf /tmp/deployment/release.tar.gz
+            rm /tmp/deployment/release.tar.gz
+
+            # Restaurar el .env de producción (no viene en el release)
+            # El .env ya debe existir en el servidor
+
+            # Ajustar permisos
+            echo "Setting permissions..."
+            chown -R www-data:www-data $DEPLOY_PATH
+            chmod -R 755 $DEPLOY_PATH
+            chmod -R 775 $DEPLOY_PATH/storage
+            chmod -R 775 $DEPLOY_PATH/bootstrap/cache
+
+            # Limpiar cache de Laravel
+            echo "Clearing Laravel cache..."
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan view:clear
+            php artisan route:clear 2>/dev/null || true
+
+            # Optimizar para producción
+            echo "Optimizing application..."
+            php artisan config:cache
+            php artisan route:cache 2>/dev/null || true
+            php artisan view:cache 2>/dev/null || true
+
+            # Ejecutar migraciones (con confirmación automática)
+            echo "Running database migrations..."
+            php artisan migrate --force
+
+            # Reiniciar servicios (si usas queue workers o supervisor)
+            echo "Restarting services..."
+            supervisorctl restart all 2>/dev/null || echo "Supervisor not configured"
+
+            # Reiniciar PHP-FPM (ajusta según tu configuración)
+            systemctl reload php7.4-fpm 2>/dev/null || \
+            service php7.4-fpm reload 2>/dev/null || \
+            docker exec safebillpro-fpm php-fpm reload 2>/dev/null || \
+            echo "PHP-FPM restart not needed or not configured"
+
+            echo "=========================================="
+            echo "Deployment completed successfully!"
+            echo "Backup saved at: $BACKUP_PATH/backup_$TIMESTAMP.tar.gz"
+            echo "=========================================="
+
+      - name: Health check
+        run: |
+          echo "Waiting 10 seconds for services to restart..."
+          sleep 10
+
+          # Verificar que el sitio responda
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://safebill.dev || echo "000")
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 400 ]; then
+            echo "✅ Health check passed! Site is responding with HTTP $HTTP_CODE"
+          else
+            echo "⚠️ Warning: Site returned HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "🚀 Deployment to production completed successfully!"
+          else
+            echo "❌ Deployment failed! Check logs above."
+          fi

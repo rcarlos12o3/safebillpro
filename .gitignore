@@ -1,40 +1,71 @@
+# Node
 /node_modules
+npm-debug.log
+yarn-error.log
+
+# Laravel
+/vendor
+/vendor_
 /public/hot
-/public/downloads
-public/cookie.txt
 /public/storage
-/public/padron_extract/*
-/public/padron_rar/*
 /storage/*.key
 /storage/backups/*
 /storage/framework/laravel-excel/*
-/vendor
-/vendor_
+/bootstrap/cache/*.php
+!bootstrap/cache/.gitkeep
+
+# Environment files
+.env
+.env.backup
+.env.production.backup
+.env.local
+.env.dusk
+.env.dusk.local
+.env.testing
+
+# IDE
 /.idea
 /.vscode
+/.project
+.codegpt
+
+# OS
+**/.DS_Store
+Thumbs.db
+
+# Testing
+.phpunit.result.cache
+phpunit.dusk.xml
+
+# Logs
+access_log
+error_log
+debug.log
+/storage/logs/*.log
+
+# Development
 /.vagrant
 Homestead.json
 Homestead.yaml
-npm-debug.log
-yarn-error.log
-.env
-.phpunit.result.cache
-access_log
-error_log
-.env.dusk
-.env.dusk.local
-debug.log
-phpunit.dusk.xml
-docker-compose.yml
-composer.lock
-/ssh
-/.project
+
+# Project specific
+/public/downloads
+public/cookie.txt
+/public/padron_extract/*
+/public/padron_rar/*
 app/CoreFacturalo/Templates/pdf/personalizada*
 public/templates/pdf/personalizada*
-supervisor.conf
-
-
-
-**/.DS_Store
 public/porto-light/js/bloquear_cliente.js
-.codegpt
+
+# Docker & Deployment (comentar si quieres versionarlos)
+# docker-compose.yml
+# supervisor.conf
+/ssh
+
+# Composer (descomentar si NO quieres versionar composer.lock)
+# composer.lock
+
+# Assets compilados (descomentar si NO quieres versionar assets compilados)
+# /public/js/app.js
+# /public/css/app.css
+# /public/mix-manifest.json
