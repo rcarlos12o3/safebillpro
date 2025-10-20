@@ -77,7 +77,7 @@ jobs:
 
       - name: Install Composer dependencies
         run: |
-          composer install --prefer-dist --no-interaction --no-dev --optimize-autoloader
+          composer install --prefer-dist --no-interaction --optimize-autoloader
 
       - name: Install NPM dependencies
         run: npm ci --prefer-offline --no-audit
