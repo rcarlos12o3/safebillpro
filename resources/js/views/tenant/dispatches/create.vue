@@ -593,45 +593,63 @@
                                         <template v-else>
                                             <tr>
                                                 <td class="text-right hidden-sm-down" colspan="2">
+                                                    <el-checkbox
+                                                        v-model="various_item"
+                                                        @change="setVariousItem">Producto manual
+                                                    </el-checkbox>
+                                                    <br>
                                                     <label class="control-label">
-                                                        Producto
-                                                        <a v-if="can_add_new_product" href="#"
+                                                        <template v-if="various_item">Descripción</template>
+                                                        <template v-else>Producto</template>
+                                                        <a v-if="can_add_new_product && !various_item" href="#"
                                                             @click.prevent="showDialogNewItem = true">[+ Nuevo]</a>
                                                     </label>
                                                 </td>
                                                 <td class="hidden-sm-down" colspan="2">
                                                     <div class="row">
                                                         <div class="col-7">
-                                                            <div :class="{ 'has-danger': errors.items }" class="form-group"
-                                                                id="custom-select">
-    
-                                                                <el-input id="custom-input">
-    
-                                                                    <el-select v-model="current_item" id="select-width"
-                                                                        :loading="loading_search"
-                                                                        :remote-method="searchRemoteItems"
-                                                                        popper-class="el-select-items" filterable remote
-                                                                        ref="selectItem" slot="prepend"
-                                                                        @change="onChangeItem">
-    
-                                                                        <el-option v-for="option in items" :key="option.id"
-                                                                            :label="option.full_description"
-                                                                            :value="option.id"></el-option>
-                                                                    </el-select>
-    
-                                                                    <el-tooltip slot="append" class="item"
-                                                                        content="Ver Stock del Producto" effect="dark"
-                                                                        placement="bottom">
-                                                                        <el-button @click.prevent="clickWarehouseDetail()">
-                                                                            <i class="fa fa-search"></i>
-                                                                        </el-button>
-                                                                    </el-tooltip>
-    
-                                                                </el-input>
-    
-                                                                <small v-if="errors.items" class="form-control-feedback"
-                                                                    v-text="errors.items[0]"></small>
-                                                            </div>
+                                                            <template v-if="various_item">
+                                                                <div class="form-group">
+                                                                    <el-input
+                                                                        v-model="item_description"
+                                                                        ref="inputItemDescriptionInline"
+                                                                        maxlength="500"
+                                                                        placeholder="Descripción del producto/servicio...">
+                                                                    </el-input>
+                                                                </div>
+                                                            </template>
+                                                            <template v-else>
+                                                                <div :class="{ 'has-danger': errors.items }" class="form-group"
+                                                                    id="custom-select">
+
+                                                                    <el-input id="custom-input">
+
+                                                                        <el-select v-model="current_item" id="select-width"
+                                                                            :loading="loading_search"
+                                                                            :remote-method="searchRemoteItems"
+                                                                            popper-class="el-select-items" filterable remote
+                                                                            ref="selectItem" slot="prepend"
+                                                                            @change="onChangeItem">
+
+                                                                            <el-option v-for="option in items" :key="option.id"
+                                                                                :label="option.full_description"
+                                                                                :value="option.id"></el-option>
+                                                                        </el-select>
+
+                                                                        <el-tooltip slot="append" class="item"
+                                                                            content="Ver Stock del Producto" effect="dark"
+                                                                            placement="bottom">
+                                                                            <el-button @click.prevent="clickWarehouseDetail()">
+                                                                                <i class="fa fa-search"></i>
+                                                                            </el-button>
+                                                                        </el-tooltip>
+
+                                                                    </el-input>
+
+                                                                    <small v-if="errors.items" class="form-control-feedback"
+                                                                        v-text="errors.items[0]"></small>
+                                                                </div>
+                                                            </template>
                                                         </div>
                                                         <div class="col-5">
                                                             <template v-if="showSeries">
@@ -883,6 +901,9 @@ export default {
             lots: [],
             showDialogLotsGroupSelected:false,
             lotsGroupSelected:[],
+            various_item: false,
+            various_item_barcode: 'VARIOUS_ITEM',
+            item_description: '',
         }
     },
     created() {
@@ -1121,6 +1142,52 @@ export default {
                 await this.filterItems()
             }
         },
+        async setVariousItem() {
+            if (this.various_item) {
+                // Guardar valor original de search_item_by_barcode
+                let original_value = this.search_item_by_barcode;
+                this.search_item_by_barcode = true;
+
+                // Buscar el producto VARIOUS_ITEM
+                await this.searchRemoteItems(this.various_item_barcode);
+
+                // Restaurar valor original
+                this.search_item_by_barcode = original_value;
+
+                // Validar que exista el producto
+                let various_item_found = this.items.find(item =>
+                    item.barcode === this.various_item_barcode
+                );
+
+                if (!various_item_found) {
+                    this.$notify({
+                        title: "Producto Manual",
+                        message: `Debe registrar un producto con código de barras ${this.various_item_barcode}`,
+                        type: "error",
+                        duration: 3000
+                    });
+                    this.various_item = false;
+                } else {
+                    // Configurar el item automáticamente
+                    this.current_item = various_item_found.id;
+                    this.$store.commit('setItem', various_item_found);
+                    this.item_description = '';
+
+                    // Focus en el input de descripción
+                    this.$nextTick(() => {
+                        if (this.$refs.inputItemDescriptionInline) {
+                            this.$refs.inputItemDescriptionInline.$el
+                                .getElementsByTagName('input')[0].focus();
+                        }
+                    });
+                }
+            } else {
+                // Resetear
+                this.current_item = null;
+                this.item_description = '';
+                this.$store.commit('setItem', null);
+            }
+        },
         onChangeItem() {
             this.IdLoteSelected = null;
             let item = this.items.find(it => it.id == this.current_item);
@@ -1133,12 +1200,20 @@ export default {
         },
         addAItemInRow() {
             this.errors = {};
-            if (this.item.lots_enabled) {
+
+            // Validación para producto manual
+            if (this.various_item) {
+                if (!this.item_description || !this.item_description.trim()) {
+                    return this.$message.error('La descripción es requerida');
+                }
+            }
+
+            if (this.item && this.item.lots_enabled) {
                 if (!this.IdLoteSelected)
                     return this.$message.error('Debe seleccionar un lote.');
             }
 
-            if (this.item.series_enabled) {
+            if (this.item && this.item.series_enabled) {
                 if (this.lots.length < 1)
                     return this.$message.error('Debe seleccionar series.');
             }
@@ -1149,6 +1224,12 @@ export default {
                     this.quantity = 1;
                 }
                 const item = this.items.find((item) => item.id == this.current_item)
+
+                // Si es producto manual, sobrescribir la descripción
+                if (this.various_item) {
+                    item.description = this.item_description;
+                }
+
                 item.IdLoteSelected = this.IdLoteSelected;
                 this.IdLoteSelected = null;
                 item.lots = this.lots;
@@ -1162,6 +1243,13 @@ export default {
                 })
                 this.$store.commit('setItem', item)
                 this.quantity = 1
+
+                // Resetear modo producto manual
+                if (this.various_item) {
+                    this.various_item = false;
+                    this.item_description = '';
+                }
+
                 this.focusDescription()
                 return null;
             }

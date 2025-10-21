@@ -4,13 +4,6 @@
             <div class="form-body">
                 <div class="row">
 
-                    <!-- <div class="col-md-6">
-                        <div class="form-group" :class="{'has-danger': errors.description}">
-                            <label class="control-label">Descripción <span class="text-danger">*</span></label>
-                            <el-input v-model="form.description" dusk="description"></el-input>
-                            <small class="form-control-feedback" v-if="errors.description" v-text="errors.description[0]"></small>
-                        </div>
-                    </div> -->
                     <div class="col-md-6">
                         <div class="form-group" :class="{'has-danger': errors.description}">
                             <label class="control-label">Nombre<span class="text-danger">*</span></label>
@@ -27,14 +20,6 @@
                         </div>
                     </div>
 
-
-                     <!-- <div class="col-md-9">
-                        <div class="form-group" :class="{'has-danger': errors.name}">
-                            <label class="control-label">Nombre  <span class="text-danger">*</span></label>
-                            <el-input v-model="form.name" dusk="name"></el-input>
-                            <small class="form-control-feedback" v-if="errors.name" v-text="errors.name[0]"></small>
-                        </div>
-                    </div> -->
                      <div class="col-md-6">
                         <div class="form-group" :class="{'has-danger': errors.name}">
                             <label class="control-label">Descripción</label>
@@ -58,17 +43,6 @@
                             <small class="form-control-feedback" v-if="errors.unit_type_id" v-text="errors.unit_type_id[0]"></small>
                         </div>
                     </div>
-
-
-                    <!-- <div class="col-md-6">
-                        <div class="form-group" :class="{'has-danger': errors.individual_items}">
-                            <label class="control-label">Elegir productos</label>
-                            <el-select v-model="form.individual_items" filterable multiple collapse-tags @change="changeIndividualItems" >
-                                <el-option v-for="option in individual_items" :key="option.id" :value="option.id" :label="option.full_description"></el-option>
-                            </el-select>
-                            <small class="form-control-feedback" v-if="errors.individual_items" v-text="errors.individual_items[0]"></small>
-                        </div>
-                    </div> -->
 
                     <div class="col-md-3">
                         <div class="form-group" :class="{'has-danger': errors.currency_type_id}">
@@ -398,60 +372,70 @@ import ItemSetFormItem from './partials/item.vue'
         },
         methods: {
             changeQuantity(){
-                
+
                 this.calculateTotal()
-                this.setTotalPurchase()
+                // Actualizar el precio de compra sugerido sin sobrescribir
+                this.updatePurchasePriceSuggestion()
 
             },
             calculateTotal(){
-
+                // Calcula el total de venta y el total de compra
+                // basado en los productos individuales agregados
                 this.total = 0;
                 this.total_purchase = 0
 
                 this.form.individual_items.forEach(row => {
+                    // Total de venta = suma de (precio venta unitario * cantidad)
+                    this.total += parseFloat(row.sale_unit_price) * parseFloat(row.quantity);
 
-                    this.total += row.sale_unit_price * row.quantity;
-
-                    this.total_purchase += parseFloat(row.purchase_unit_price) * row.quantity;
-
+                    // Total de compra = suma de (precio compra unitario * cantidad)
+                    this.total_purchase += parseFloat(row.purchase_unit_price) * parseFloat(row.quantity);
                 });
 
             },
-            setTotalPurchase(){
-                this.form.purchase_unit_price = this.total_purchase
+            updatePurchasePriceSuggestion(){
+                // Solo actualizar si el campo está vacío o es 0 (primera vez)
+                // Esto permite que el usuario ajuste manualmente el precio sin que se sobrescriba
+                if (!this.form.purchase_unit_price || this.form.purchase_unit_price == 0) {
+                    this.form.purchase_unit_price = this.total_purchase
+                }
             },
             clickRemoveItem(index) {
-                this.form.individual_items.splice(index, 1)
-                this.changeIndividualItems()
+                const item = this.form.individual_items[index]
+                this.$confirm(
+                    `¿Está seguro de eliminar el producto "${item.full_description}"?`,
+                    'Confirmar eliminación',
+                    {
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar',
+                        type: 'warning'
+                    }
+                ).then(() => {
+                    this.form.individual_items.splice(index, 1)
+                    this.changeIndividualItems()
+                    this.$message.success('Producto eliminado')
+                }).catch(() => {
+                    // Usuario canceló
+                })
             },
             addRow(row) {
-
                 let exist = this.form.individual_items.find((item) => item.individual_item_id == row.individual_item_id)
 
                 if(exist) {
+                    // Si el producto ya existe, incrementa la cantidad
                     exist.quantity += row.quantity;
+                    this.$message.info(`Se incrementó la cantidad del producto "${exist.full_description}"`)
                 }else{
+                    // Si es nuevo, lo agrega a la lista
                     this.form.individual_items.push(row)
+                    this.$message.success('Producto agregado correctamente')
                 }
 
-                // console.log(row)
                 this.changeIndividualItems()
             },
             changeIndividualItems(){
                 this.calculateTotal();
-
-                this.setTotalPurchase()
-
-                // let acum_sale_unit_price = 0
-
-                // this.form.individual_items.forEach(row => {
-                //     // let individual_item = _.find(this.individual_items,{'id':id})
-                //     acum_sale_unit_price += parseFloat(row.sale_unit_price) * parseFloat(row.quantity)
-                // });
-
-                // this.form.sale_unit_price = acum_sale_unit_price
-                // this.form.sale_unit_price_set = acum_sale_unit_price
-
+                this.updatePurchasePriceSuggestion()
             },
             initForm() {
                 this.loading_submit = false,
@@ -620,9 +604,54 @@ import ItemSetFormItem from './partials/item.vue'
             },
             submit() {
 
-                if(this.form.individual_items.length < 2)
-                    return this.$message.error('Al menos debe elegir 2 productos')
+                // Validaciones
+                // Permitir 1 producto con cantidad >= 2 (duopack/tripack) o múltiples productos
+                if(this.form.individual_items.length === 0) {
+                    return this.$message.error('Debe agregar al menos un producto')
+                }
 
+                // Si solo hay 1 producto, la cantidad debe ser >= 2 (duopack, tripack, etc.)
+                if(this.form.individual_items.length === 1) {
+                    const item = this.form.individual_items[0]
+                    if(item.quantity < 2) {
+                        return this.$message.error('Para un solo producto, debe tener al menos 2 unidades (duopack, tripack, etc.)')
+                    }
+                }
+
+                // Validar que todas las cantidades sean mayores a 0
+                const invalidQuantity = this.form.individual_items.find(item => item.quantity <= 0)
+                if(invalidQuantity)
+                    return this.$message.error('Todas las cantidades deben ser mayores a 0')
+
+                // Validar precio de venta
+                if(!this.form.sale_unit_price || this.form.sale_unit_price <= 0)
+                    return this.$message.error('El precio de venta debe ser mayor a 0')
+
+                // Validar precio de compra
+                if(!this.form.purchase_unit_price || this.form.purchase_unit_price <= 0)
+                    return this.$message.error('El precio de compra debe ser mayor a 0')
+
+                // Advertencia si precio de venta es menor que el costo total
+                if(parseFloat(this.form.sale_unit_price) < parseFloat(this.total_purchase)) {
+                    this.$confirm(
+                        `El precio de venta (${this.form.sale_unit_price}) es menor que el costo total de los productos (${this.total_purchase}). ¿Desea continuar?`,
+                        'Advertencia',
+                        {
+                            confirmButtonText: 'Sí, continuar',
+                            cancelButtonText: 'Cancelar',
+                            type: 'warning'
+                        }
+                    ).then(() => {
+                        this.submitForm()
+                    }).catch(() => {
+                        // Usuario canceló
+                    })
+                    return
+                }
+
+                this.submitForm()
+            },
+            submitForm() {
                 this.form.sale_unit_price_set = this.form.sale_unit_price
                 this.loading_submit = true
                 this.$http.post(`/${this.resource}`, this.form)
