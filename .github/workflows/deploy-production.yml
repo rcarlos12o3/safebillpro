@@ -162,9 +162,10 @@ jobs:
             # El .env ya debe existir en el servidor
 
             # Instalar dependencias de Composer en producción (vendor/ no viene en el artifact)
+            # NOTA: Incluye dev dependencies porque DatabaseServiceProvider requiere Faker
             echo "Installing Composer dependencies..."
             cd $DEPLOY_PATH
-            docker exec safebillpro-fpm composer install --prefer-dist --no-interaction --optimize-autoloader --no-dev
+            docker exec safebillpro-fpm composer install --prefer-dist --no-interaction --optimize-autoloader
 
             # Crear directorio temporal de mpdf y dar permisos
             echo "Creating mpdf temp directory..."
@@ -237,7 +238,7 @@ jobs:
                 echo "Rolling back to: $LATEST_BACKUP"
                 cd $DEPLOY_PATH
                 tar -xzf $LATEST_BACKUP
-                docker exec safebillpro-fpm composer install --prefer-dist --no-interaction --optimize-autoloader --no-dev
+                docker exec safebillpro-fpm composer install --prefer-dist --no-interaction --optimize-autoloader
                 docker exec safebillpro-fpm php artisan config:clear
                 docker exec safebillpro-fpm php artisan cache:clear
                 docker exec safebillpro-fpm php artisan view:clear
