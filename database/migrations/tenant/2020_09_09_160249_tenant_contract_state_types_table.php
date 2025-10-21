@@ -15,7 +15,7 @@ class TenantContractStateTypesTable extends Migration
     {
         Schema::create('contract_state_types', function (Blueprint $table) {
             $table->increments('indice');
-            $table->char('id', 2)->index();
+            $table->char('id', 2)->unique();
             $table->string('description');
         });
 

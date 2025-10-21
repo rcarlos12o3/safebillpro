@@ -17,7 +17,7 @@ class TenantDocumentPaymentsTable extends Migration
     {
         Schema::create('card_brands', function (Blueprint $table) {
             $table->increments('indice');
-            $table->char('id', 2)->index();
+            $table->char('id', 2)->unique();
             $table->string('description');
         });
 
@@ -28,7 +28,7 @@ class TenantDocumentPaymentsTable extends Migration
 
         Schema::create('payment_method_types', function (Blueprint $table) {
             $table->increments('indice');
-            $table->char('id', 2)->index();
+            $table->char('id', 2)->unique();
             $table->string('description');
             $table->boolean('has_card')->default(false);
         });

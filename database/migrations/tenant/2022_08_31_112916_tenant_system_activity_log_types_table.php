@@ -16,7 +16,7 @@ class TenantSystemActivityLogTypesTable extends Migration
     {
         Schema::create('system_activity_log_types', function (Blueprint $table) {
 	    $table->increments('indice');
-            $table->string('id')->index();
+            $table->string('id')->unique();
             $table->string('description');
         });
         
