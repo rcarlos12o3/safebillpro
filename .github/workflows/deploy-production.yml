@@ -146,11 +146,13 @@ jobs:
               --exclude='storage/framework/cache/*' \
               --exclude='storage/framework/sessions/*' \
               --exclude='storage/framework/views/*' \
-              .
+              --exclude='storage/app/tenancy/*/pdf/*' \
+              --warning=no-file-changed \
+              . || [ $? -eq 1 ]
 
-            # Mantener solo los últimos 5 backups
+            # Mantener solo los últimos 3 backups
             cd $BACKUP_PATH
-            ls -t backup_*.tar.gz | tail -n +6 | xargs rm -f 2>/dev/null || true
+            ls -t backup_*.tar.gz | tail -n +4 | xargs rm -f 2>/dev/null || true
 
             # Extraer el nuevo release
             echo "Extracting new release..."
