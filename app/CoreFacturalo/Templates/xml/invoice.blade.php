@@ -165,7 +165,9 @@
         </cac:Party>
     </cac:AccountingCustomerParty>
     @if($document->detraction)
-        @php($detraction = $document->detraction)
+        @php
+            $detraction = $document->detraction;
+        @endphp
         <cac:PaymentMeans>
             <cbc:ID>Detraccion</cbc:ID>
             <cbc:PaymentMeansCode>{{ $detraction->payment_method_id }}</cbc:PaymentMeansCode>
@@ -202,7 +204,9 @@
     @endforeach
     @endif
     @if($document->perception)
-    @php($perception = $document->perception)
+    @php
+        $perception = $document->perception;
+    @endphp
     <cac:PaymentTerms>
         <cbc:ID>Percepcion</cbc:ID>
         <cbc:Amount currencyID="PEN">{{ $perception->amount }}</cbc:Amount>
@@ -230,17 +234,42 @@
     @endif
     @if($document->discounts)
     @foreach($document->discounts as $discount)
+    @php
+        $disc_factor = null;
+        $disc_base = null;
+        $disc_amount = null;
+
+        if (property_exists($discount, 'factor')) {
+            $disc_factor = $discount->factor;
+        }
+        if (property_exists($discount, 'base')) {
+            $disc_base = $discount->base;
+        }
+        if (property_exists($discount, 'amount')) {
+            $disc_amount = $discount->amount;
+        }
+
+        if (empty($disc_factor) && !empty($disc_base) && $disc_base != 0 && !empty($disc_amount)) {
+            $disc_factor = round($disc_amount / $disc_base, 5);
+        }
+    @endphp
     <cac:AllowanceCharge>
         <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
         <cbc:AllowanceChargeReasonCode>{{ $discount->discount_type_id }}</cbc:AllowanceChargeReasonCode>
-        <cbc:MultiplierFactorNumeric>{{ $discount->factor }}</cbc:MultiplierFactorNumeric>
-        <cbc:Amount currencyID="{{ $document->currency_type_id }}">{{ $discount->amount }}</cbc:Amount>
-        <cbc:BaseAmount currencyID="{{ $document->currency_type_id }}">{{ $discount->base }}</cbc:BaseAmount>
+        @if(!empty($disc_factor))
+        <cbc:MultiplierFactorNumeric>{{ $disc_factor }}</cbc:MultiplierFactorNumeric>
+        @endif
+        <cbc:Amount currencyID="{{ $document->currency_type_id }}">{{ $disc_amount }}</cbc:Amount>
+        @if(!empty($disc_base))
+        <cbc:BaseAmount currencyID="{{ $document->currency_type_id }}">{{ $disc_base }}</cbc:BaseAmount>
+        @endif
     </cac:AllowanceCharge>
     @endforeach
     @endif
     @if($document->perception)
-    @php($perception = $document->perception)
+    @php
+        $perception = $document->perception;
+    @endphp
     <cac:AllowanceCharge>
         <cbc:ChargeIndicator>true</cbc:ChargeIndicator>
         <cbc:AllowanceChargeReasonCode>{{ $perception->code }}</cbc:AllowanceChargeReasonCode>
@@ -250,7 +279,9 @@
     </cac:AllowanceCharge>
     @endif
     @if($document->retention)
-    @php($retention = $document->retention)
+    @php
+        $retention = $document->retention;
+    @endphp
     <cac:AllowanceCharge>
         <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
         <cbc:AllowanceChargeReasonCode>{{ $retention->code }}</cbc:AllowanceChargeReasonCode>
@@ -501,12 +532,35 @@
         @endif
         @if($row->discounts)
         @foreach($row->discounts as $discount)
+        @php
+            $disc_factor = null;
+            $disc_base = null;
+            $disc_amount = null;
+
+            if (property_exists($discount, 'factor')) {
+                $disc_factor = $discount->factor;
+            }
+            if (property_exists($discount, 'base')) {
+                $disc_base = $discount->base;
+            }
+            if (property_exists($discount, 'amount')) {
+                $disc_amount = $discount->amount;
+            }
+
+            if (empty($disc_factor) && !empty($disc_base) && $disc_base != 0 && !empty($disc_amount)) {
+                $disc_factor = round($disc_amount / $disc_base, 5);
+            }
+        @endphp
         <cac:AllowanceCharge>
             <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
             <cbc:AllowanceChargeReasonCode>{{ $discount->discount_type_id }}</cbc:AllowanceChargeReasonCode>
-            <cbc:MultiplierFactorNumeric>{{ $discount->factor }}</cbc:MultiplierFactorNumeric>
-            <cbc:Amount currencyID="{{ $document->currency_type_id }}">{{ $discount->amount }}</cbc:Amount>
-            <cbc:BaseAmount currencyID="{{ $document->currency_type_id }}">{{ $discount->base }}</cbc:BaseAmount>
+            @if(!empty($disc_factor))
+            <cbc:MultiplierFactorNumeric>{{ $disc_factor }}</cbc:MultiplierFactorNumeric>
+            @endif
+            <cbc:Amount currencyID="{{ $document->currency_type_id }}">{{ $disc_amount }}</cbc:Amount>
+            @if(!empty($disc_base))
+            <cbc:BaseAmount currencyID="{{ $document->currency_type_id }}">{{ $disc_base }}</cbc:BaseAmount>
+            @endif
         </cac:AllowanceCharge>
         @endforeach
         @endif
@@ -533,7 +587,9 @@
                 <cac:TaxCategory>
                     <cbc:Percent>{{ $row->percentage_igv }}</cbc:Percent>
                     <cbc:TaxExemptionReasonCode>{{ $row->affectation_igv_type_id }}</cbc:TaxExemptionReasonCode>
-                    @php($affectation = \App\CoreFacturalo\Templates\FunctionTribute::getByAffectation($row->affectation_igv_type_id))
+                    @php
+                        $affectation = \App\CoreFacturalo\Templates\FunctionTribute::getByAffectation($row->affectation_igv_type_id);
+                    @endphp
                     <cac:TaxScheme>
                         <cbc:ID>{{ $affectation['id'] }}</cbc:ID>
                         <cbc:Name>{{ $affectation['name'] }}</cbc:Name>

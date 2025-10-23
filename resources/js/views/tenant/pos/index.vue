@@ -1448,15 +1448,18 @@ export default {
             });
             this.customer = customer;
 
-            if (this.configuration.default_document_type_80) {
-
+            // Prioridad 1: Si el cliente tiene RUC (tipo 6), siempre usar factura
+            if (customer.identity_document_type_id == "6") {
+                this.form.document_type_id = "01";
+            } else if (this.configuration.default_document_type_80) {
+                // Prioridad 2: Nota de venta por defecto
                 this.form.document_type_id = "80"
-
-            }else if (this.configuration.default_document_type_03) {
+            } else if (this.configuration.default_document_type_03) {
+                // Prioridad 3: Boleta por defecto
                 this.form.document_type_id = "03";
             } else {
-                this.form.document_type_id =
-                    customer.identity_document_type_id == "6" ? "01" : "03";
+                // Prioridad 4: Sin configuración, usar boleta
+                this.form.document_type_id = "03";
             }
 
             this.setLocalStorageIndex("customer", this.customer);
