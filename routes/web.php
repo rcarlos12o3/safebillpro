@@ -657,6 +657,15 @@ if ($hostname) {
             Route::get('pos/items', 'Tenant\PosController@item');
             Route::get('pos/search_items_cat', 'Tenant\PosController@search_items_cat');
 
+            //Carga Masiva
+            Route::get('bulk-upload', 'Tenant\BulkUploadController@index')->name('tenant.bulk_upload.index')->middleware('redirect.level');
+            Route::get('bulk-upload/records', 'Tenant\BulkUploadController@records');
+            Route::post('bulk-upload/upload', 'Tenant\BulkUploadController@upload');
+            Route::post('bulk-upload/process-batch', 'Tenant\BulkUploadController@processBatch');
+            Route::delete('bulk-upload/delete-batch', 'Tenant\BulkUploadController@deleteBatch');
+            Route::get('bulk-upload/download-template', 'Tenant\BulkUploadController@downloadTemplate');
+            Route::get('bulk-upload/history', 'Tenant\BulkUploadController@history');
+
             Route::get('cash', 'Tenant\CashController@index')->name('tenant.cash.index')->middleware('redirect.level');
             Route::get('cash/columns', 'Tenant\CashController@columns');
             Route::get('cash/records', 'Tenant\CashController@records');

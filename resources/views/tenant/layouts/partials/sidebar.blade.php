@@ -190,6 +190,16 @@ $inventory_configuration = InventoryConfiguration::getSidebarPermissions();
                                     </li>
                                 @endif
 
+                                {{-- Separador --}}
+                                <li class="nav-separator"></li>
+
+                                {{-- Carga Masiva --}}
+                                @if(in_array('bulk_upload', $vc_module_levels))
+                                    <li class="{{ ($firstLevel === 'bulk-upload') ? 'nav-active' : '' }}">
+                                        <a class="nav-link" href="{{ route('tenant.bulk_upload.index') }}">Carga Masiva</a>
+                                    </li>
+                                @endif
+
                             </ul>
                         </li>
                     @endif
