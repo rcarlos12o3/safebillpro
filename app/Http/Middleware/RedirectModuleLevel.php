@@ -217,6 +217,8 @@
                     $group = "account_summary";
                 } elseif ($path[0] == "pos") {
                     $group = "pos";
+                } elseif ($path[0] == "bulk-upload") {
+                    $group = "bulk_upload";
                 } else {
                     $group = null;
                 }
@@ -381,6 +383,8 @@
                     return redirect()->route('tenant.accounting_ledger.index');
                 case 'pos':
                     return redirect()->route('tenant.pos.index');
+                case 'bulk_upload':
+                    return redirect()->route('tenant.bulk_upload.index');
                 case 'configuration_visual':
                 case 'configuration_advance':
                 case 'configuration_company':

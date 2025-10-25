@@ -53,22 +53,10 @@ class UserController extends Controller
     }
 
     public function tables() {
-        /** @var User $user */
-        $user = User::find(1);
-        $modulesTenant = $user->getCurrentModuleByTenant()
-                              ->pluck('module_id')
-                              ->all();
-
-        $levelsTenant = $user->getCurrentModuleLevelByTenant()
-                             ->pluck('module_level_id')
-                             ->toArray();
-
-
-        $modules = Module::with(['levels' => function ($query) use ($levelsTenant) {
-            $query->whereIn('id', $levelsTenant);
-        }])
+        // SIEMPRE mostrar TODOS los módulos y TODOS los permisos disponibles
+        // para que el administrador pueda asignarlos libremente
+        $modules = Module::with(['levels'])
                          ->orderBy('order_menu')
-                         ->whereIn('id', $modulesTenant)
                          ->get()
                          ->each(function ($module) {
                              return $this->prepareModules($module);

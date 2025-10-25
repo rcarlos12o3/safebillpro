@@ -55,12 +55,15 @@ class LoginController extends Controller
     public function showLoginForm()
     {
         $config = SystemConfiguration::first();
-        if (! $config->use_login_global) {
+
+        if (!$config || !$config->use_login_global) {
             $config = Configuration::first();
         }
-        $useLoginGlobal = $config->use_login_global;
-        $login = $config->login;
+
+        $useLoginGlobal = $config ? ($config->use_login_global ?? false) : false;
+        $login = $config ? ($config->login ?? null) : null;
         $company = Company::first();
+
         return view('tenant.auth.login', compact('company', 'login', 'useLoginGlobal'));
     }
 }

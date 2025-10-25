@@ -171,21 +171,20 @@
                 $row->count_doc_pse = DB::connection('tenant')->table('documents')->where('send_to_pse', true)->count();
                 // dd($row->count_doc_pse);
 
-                $row->count_doc = DB::connection('tenant')
+                $config = DB::connection('tenant')
                     ->table('configurations')
-                    ->first()
-                    ->quantity_documents;
-                $row->soap_type = DB::connection('tenant')
-                    ->table('companies')
-                    ->first()
-                    ->soap_type_id;
+                    ->first();
+
+                $row->count_doc = $config ? ($config->quantity_documents ?? 0) : 0;
+
+                $company = DB::connection('tenant')->table('companies')->first();
+                $row->soap_type = $company ? ($company->soap_type_id ?? null) : null;
+
                 $row->count_user = DB::connection('tenant')
                     ->table('users')
                     ->count();
-                $row->count_sales_notes = DB::connection('tenant')
-                ->table('configurations')
-                ->first()
-                ->quantity_sales_notes;
+
+                $row->count_sales_notes = $config ? ($config->quantity_sales_notes ?? 0) : 0;
                 $quantity_pending_documents = $this->getQuantityPendingDocuments();
                 $row->document_regularize_shipping = $quantity_pending_documents['document_regularize_shipping'];
                 $row->document_not_sent = $quantity_pending_documents['document_not_sent'];
@@ -223,10 +222,10 @@
                             ]);
                         }
                     }
-                    $row->count_sales_notes = DB::connection('tenant')
-                    ->table('configurations')
-                    ->first()
-                    ->quantity_sales_notes;
+                    $configSalesNotes = DB::connection('tenant')
+                        ->table('configurations')
+                        ->first();
+                    $row->count_sales_notes = $configSalesNotes ? ($configSalesNotes->quantity_sales_notes ?? 0) : 0;
                     //dd($row->count_sales_notes);
 
                     $row->monthly_sales_total = $client_helper->getSalesTotal($init->format('Y-m-d'), $end->format('Y-m-d'), $row->plan);

@@ -665,6 +665,8 @@ if ($hostname) {
             Route::delete('bulk-upload/delete-batch', 'Tenant\BulkUploadController@deleteBatch');
             Route::get('bulk-upload/download-template', 'Tenant\BulkUploadController@downloadTemplate');
             Route::get('bulk-upload/history', 'Tenant\BulkUploadController@history');
+            Route::get('bulk-upload/batch-details', 'Tenant\BulkUploadController@batchDetails');
+            Route::get('bulk-upload/export-errors', 'Tenant\BulkUploadController@exportErrors');
 
             Route::get('cash', 'Tenant\CashController@index')->name('tenant.cash.index')->middleware('redirect.level');
             Route::get('cash/columns', 'Tenant\CashController@columns');

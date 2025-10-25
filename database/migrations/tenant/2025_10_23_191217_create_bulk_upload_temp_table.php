@@ -14,32 +14,35 @@ class CreateBulkUploadTempTable extends Migration
      */
     public function up()
     {
-        Schema::create('bulk_upload_temp', function (Blueprint $table) {
-            $table->increments('id');
-            $table->unsignedInteger('user_id'); // Usuario que subió
-            $table->string('type', 20)->default('documents'); // Tipo: documents, customers, items
-            $table->string('batch_id', 50); // ID único del lote/upload
-            $table->date('date_of_issue')->nullable(); // Fecha de emisión seleccionada
+        // Verificar si la tabla ya existe antes de crearla
+        if (!Schema::hasTable('bulk_upload_temp')) {
+            Schema::create('bulk_upload_temp', function (Blueprint $table) {
+                $table->increments('id');
+                $table->unsignedInteger('user_id'); // Usuario que subió
+                $table->string('type', 20)->default('documents'); // Tipo: documents, customers, items
+                $table->string('batch_id', 50); // ID único del lote/upload
+                $table->date('date_of_issue')->nullable(); // Fecha de emisión seleccionada
 
-            // Datos del Excel
-            $table->json('row_data'); // Datos completos de la fila
+                // Datos del Excel
+                $table->json('row_data'); // Datos completos de la fila
 
-            // Validaciones
-            $table->boolean('is_valid')->default(false);
-            $table->text('validation_errors')->nullable();
+                // Validaciones
+                $table->boolean('is_valid')->default(false);
+                $table->text('validation_errors')->nullable();
 
-            // Estado
-            $table->enum('status', ['pending', 'processed', 'error'])->default('pending');
-            $table->unsignedInteger('document_id')->nullable(); // ID del documento creado
-            $table->text('process_error')->nullable(); // Error al procesar
+                // Estado
+                $table->enum('status', ['pending', 'processed', 'error'])->default('pending');
+                $table->unsignedInteger('document_id')->nullable(); // ID del documento creado
+                $table->text('process_error')->nullable(); // Error al procesar
 
-            $table->timestamps();
+                $table->timestamps();
 
-            // Índices
-            $table->index('batch_id');
-            $table->index('user_id');
-            $table->index('status');
-        });
+                // Índices
+                $table->index('batch_id');
+                $table->index('user_id');
+                $table->index('status');
+            });
+        }
 
         // Agregar permiso de carga masiva a module_levels (si no existe)
         $exists = DB::table('module_levels')->where('value', 'bulk_upload')->exists();

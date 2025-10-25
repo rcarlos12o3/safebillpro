@@ -10,6 +10,7 @@ class BulkUploadTemp extends ModelTenant
         'user_id',
         'type',
         'batch_id',
+        'document_group_id',
         'date_of_issue',
         'row_data',
         'is_valid',
@@ -57,5 +58,13 @@ class BulkUploadTemp extends ModelTenant
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
+    }
+
+    /**
+     * Scope para obtener registros de un grupo de documento específico
+     */
+    public function scopeOfDocumentGroup($query, $documentGroupId)
+    {
+        return $query->where('document_group_id', $documentGroupId);
     }
 }

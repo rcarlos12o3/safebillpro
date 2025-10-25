@@ -60,23 +60,45 @@ class BulkUploadController extends Controller
             $dateOfIssue = $request->input('date_of_issue');
 
             if ($type === 'documents') {
-                // Validar el Excel
-                $validator = new \App\Imports\BulkDocumentsValidator();
+                // Validar el Excel (pasar la fecha de emisión)
+                $validator = new \App\Imports\BulkDocumentsValidator($dateOfIssue);
                 Excel::import($validator, $file);
 
                 $validatedRows = $validator->getValidatedRows();
+                $groupedDocuments = $validator->getGroupedDocuments();
                 $validCount = $validator->getValidCount();
                 $errorCount = $validator->getErrorCount();
+
+                // Validar límite máximo de filas
+                $totalRows = count($validatedRows);
+                $maxRows = config('bulk_upload.max_rows', 500);
+
+                if ($totalRows > $maxRows) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "El archivo contiene {$totalRows} filas. El máximo permitido es {$maxRows}. Por favor, divida su archivo en partes más pequeñas."
+                    ], 422);
+                }
 
                 // Generar batch_id único
                 $batchId = Str::uuid()->toString();
 
                 // Guardar en tabla temporal
+                // Guardamos las filas individuales para mantener retrocompatibilidad
                 foreach ($validatedRows as $row) {
+                    // Determinar document_group_id
+                    $documentGroupId = null;
+                    if (isset($row['data']['documento_id']) && !empty($row['data']['documento_id'])) {
+                        $documentGroupId = (string)$row['data']['documento_id'];
+                    } else {
+                        $documentGroupId = 'auto_' . $row['row_number'];
+                    }
+
                     BulkUploadTemp::create([
                         'user_id' => auth()->id(),
                         'type' => $type,
                         'batch_id' => $batchId,
+                        'document_group_id' => $documentGroupId,
                         'date_of_issue' => $dateOfIssue,
                         'row_data' => $row['data'],
                         'is_valid' => $row['is_valid'],
@@ -85,14 +107,19 @@ class BulkUploadController extends Controller
                     ]);
                 }
 
+                // Calcular número de documentos que se crearán
+                $documentCount = count($groupedDocuments);
+
                 return response()->json([
                     'success' => true,
-                    'message' => "Archivo validado. {$validCount} registros válidos, {$errorCount} con errores.",
+                    'message' => "Archivo validado. {$documentCount} documento(s) a crear con {$validCount} item(s), {$errorCount} con errores.",
                     'data' => [
                         'batch_id' => $batchId,
                         'valid_count' => $validCount,
                         'error_count' => $errorCount,
+                        'document_count' => $documentCount,
                         'rows' => $validatedRows,
+                        'grouped_documents' => $groupedDocuments,
                     ]
                 ]);
 
@@ -164,15 +191,93 @@ class BulkUploadController extends Controller
     /**
      * Get upload history
      *
+     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function history()
+    public function history(Request $request)
     {
-        // Aquí puedes agregar la lógica para obtener el historial
-        // de cargas masivas realizadas
+        $limit = $request->input('limit', 50);
+        $page = $request->input('page', 1);
+
+        // Obtener historial agrupado por batch_id
+        $history = BulkUploadTemp::select([
+                'batch_id',
+                'type',
+                DB::raw('DATE(date_of_issue) as date_of_issue'),
+                'user_id',
+                DB::raw('MIN(created_at) as upload_date'),
+                DB::raw('COUNT(*) as total_rows'),
+                DB::raw('SUM(CASE WHEN is_valid = 1 THEN 1 ELSE 0 END) as valid_rows'),
+                DB::raw('SUM(CASE WHEN is_valid = 0 THEN 1 ELSE 0 END) as error_rows'),
+                DB::raw('SUM(CASE WHEN status = "processed" THEN 1 ELSE 0 END) as processed_rows'),
+                DB::raw('SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending_rows'),
+                DB::raw('SUM(CASE WHEN status = "error" THEN 1 ELSE 0 END) as error_processing_rows'),
+                DB::raw('COUNT(DISTINCT document_group_id) as document_count')
+            ])
+            ->with('user:id,name,email')
+            ->groupBy('batch_id', 'type', DB::raw('DATE(date_of_issue)'), 'user_id')
+            ->orderBy('upload_date', 'desc')
+            ->paginate($limit, ['*'], 'page', $page);
+
+        return response()->json($history);
+    }
+
+    /**
+     * Get batch details
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function batchDetails(Request $request)
+    {
+        $request->validate([
+            'batch_id' => 'required|string'
+        ]);
+
+        $batchId = $request->input('batch_id');
+
+        $records = BulkUploadTemp::ofBatch($batchId)
+            ->orderBy('id')
+            ->get();
+
+        if ($records->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Batch no encontrado'
+            ], 404);
+        }
+
+        // Agrupar por document_group_id
+        $groupedRecords = $records->groupBy('document_group_id')->map(function($group) {
+            return [
+                'document_group_id' => $group->first()->document_group_id,
+                'items_count' => $group->count(),
+                'is_valid' => $group->every(function($item) {
+                    return $item->is_valid;
+                }),
+                'status' => $group->first()->status,
+                'document_id' => $group->first()->document_id,
+                'items' => $group->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'row_data' => $item->row_data,
+                        'is_valid' => $item->is_valid,
+                        'validation_errors' => $item->validation_errors,
+                        'status' => $item->status,
+                        'process_error' => $item->process_error,
+                    ];
+                })
+            ];
+        })->values();
 
         return response()->json([
-            'data' => []
+            'success' => true,
+            'data' => [
+                'batch_id' => $batchId,
+                'total_documents' => $groupedRecords->count(),
+                'total_items' => $records->count(),
+                'documents' => $groupedRecords
+            ]
         ]);
     }
 
@@ -204,27 +309,34 @@ class BulkUploadController extends Controller
                 ], 422);
             }
 
+            // Agrupar registros por document_group_id
+            $groupedRecords = $records->groupBy('document_group_id');
+
             $successCount = 0;
             $errorCount = 0;
             $errors = [];
 
-            foreach ($records as $record) {
+            // Procesar cada grupo de documento
+            foreach ($groupedRecords as $documentGroupId => $groupRecords) {
                 try {
-                    DB::connection('tenant')->transaction(function () use ($record, &$successCount) {
-                        $this->processRecord($record);
+                    DB::connection('tenant')->transaction(function () use ($groupRecords, &$successCount) {
+                        $this->processDocumentGroup($groupRecords);
                         $successCount++;
                     });
                 } catch (\Exception $e) {
                     $errorCount++;
-                    $errors[] = "Fila {$record->id}: " . $e->getMessage();
+                    $rowNumbers = $groupRecords->pluck('id')->join(', ');
+                    $errors[] = "Grupo {$documentGroupId} (filas {$rowNumbers}): " . $e->getMessage();
 
-                    // Marcar como error en la BD
-                    $record->update([
-                        'status' => 'error',
-                        'process_error' => $e->getMessage()
-                    ]);
+                    // Marcar todos los registros del grupo como error
+                    foreach ($groupRecords as $record) {
+                        $record->update([
+                            'status' => 'error',
+                            'process_error' => $e->getMessage()
+                        ]);
+                    }
 
-                    \Log::error("Error procesando registro {$record->id}: " . $e->getMessage());
+                    \Log::error("Error procesando grupo {$documentGroupId}: " . $e->getMessage());
                 }
             }
 
@@ -251,23 +363,145 @@ class BulkUploadController extends Controller
     }
 
     /**
-     * Process a single record and create document
+     * Process a group of records (items) and create a single document
      *
-     * @param BulkUploadTemp $record
+     * @param \Illuminate\Support\Collection $records
      * @return void
      */
-    private function processRecord($record)
+    private function processDocumentGroup($records)
     {
-        $row = $record->row_data;
-        $dateOfIssue = $record->date_of_issue;
+        // Tomar el primer registro para obtener datos del documento
+        $firstRecord = $records->first();
+        $firstRow = $firstRecord->row_data;
+        $dateOfIssue = $firstRecord->date_of_issue;
 
-        // Aquí va la misma lógica que tenía en BulkDocumentsImport::processRow()
-        // pero usando $row y $dateOfIssue del record temporal
+        // Construir array de items para el documento
+        $documentItems = [];
+        $total_taxed = 0;
+        $total_unaffected = 0;
+        $total_exonerated = 0;
+        $total_igv = 0;
+        $total_value = 0;
+        $total = 0;
 
-        $item = Item::find($row['item_id']);
-        $customer = Person::whereType('customers')->where('id', $row['customer_id'])->first();
-        $serie = Series::where('number', $row['serie'])->first();
+        // Obtener customer y serie del primer registro (todos deben ser iguales)
+        if (isset($firstRow['customer_id'])) {
+            $customer = Person::whereType('customers')->where('id', $firstRow['customer_id'])->first();
+        } else {
+            $customer = Person::whereType('customers')
+                ->where('identity_document_type_id', $firstRow['tipo_documento'])
+                ->where('number', $firstRow['numero_documento'])
+                ->first();
+
+            if (!$customer) {
+                $customer = Person::create([
+                    'type' => 'customers',
+                    'identity_document_type_id' => $firstRow['tipo_documento'],
+                    'number' => $firstRow['numero_documento'],
+                    'name' => $firstRow['nombre_cliente'],
+                    'trade_name' => $firstRow['nombre_cliente'],
+                    'address' => $firstRow['direccion'] ?? '-',
+                    'country_id' => 'PE',
+                    'email' => null,
+                    'telephone' => null,
+                    'enabled' => true,
+                ]);
+            }
+        }
+
+        $serie = Series::where('number', $firstRow['serie'])->first();
         $establishment = \App\Models\Tenant\Establishment::where('id', $serie->establishment_id)->first();
+
+        // Construir items del documento
+        foreach ($records as $record) {
+            $row = $record->row_data;
+            $item = Item::find($row['item_id']);
+
+            // Obtener tipo de afectación del IGV del producto
+            $affectationIgvType = $item->sale_affectation_igv_type_id ?? '10';
+
+            $quantity = floatval($row['cantidad']);
+            $unit_price = floatval($item->sale_unit_price);
+
+            // Calcular según tipo de afectación
+            if ($affectationIgvType === '10') {
+                // GRAVADO: El precio incluye IGV, hay que separarlo
+                $unit_value = round($unit_price / 1.18, 10);
+                $subtotal = round($unit_value * $quantity, 2);
+                $igv = round($subtotal * 0.18, 2);
+                $item_total = round($subtotal + $igv, 2);
+                $has_igv = true;
+            } else {
+                // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
+                $unit_value = $unit_price;
+                $subtotal = round($unit_value * $quantity, 2);
+                $igv = 0;
+                $item_total = $subtotal;
+                $has_igv = false;
+            }
+
+            // Acumular totales del documento
+            if ($affectationIgvType === '10') {
+                $total_taxed += $subtotal;
+            } elseif ($affectationIgvType === '30') {
+                $total_unaffected += $subtotal;
+            } elseif ($affectationIgvType === '20') {
+                $total_exonerated += $subtotal;
+            }
+
+            $total_igv += $igv;
+            $total_value += $subtotal;
+            $total += $item_total;
+
+            $documentItem = [
+                'item_id' => $item->id,
+                'item' => [
+                    'id' => $item->id,
+                    'description' => $item->description,
+                    'item_type_id' => $item->item_type_id ?? '01',
+                    'internal_id' => $item->internal_id ?? null,
+                    'item_code' => $item->item_code ?? null,
+                    'item_code_gs1' => $item->item_code_gs1 ?? null,
+                    'unit_type_id' => $item->unit_type_id,
+                    'currency_type_id' => 'PEN',
+                    'sale_unit_price' => $unit_price,
+                    'purchase_unit_price' => $item->purchase_unit_price ?? 0,
+                    'has_igv' => $has_igv,
+                    'is_set' => $item->is_set ?? false,
+                    'amount_plastic_bag_taxes' => $item->amount_plastic_bag_taxes ?? 0,
+                    'lots' => [],
+                    'IdLoteSelected' => null,
+                    'model' => $item->model ?? null,
+                    'presentation' => [],
+                ],
+                'quantity' => $quantity,
+                'unit_value' => $unit_value,
+                'unit_price' => $unit_price,
+                'affectation_igv_type_id' => $affectationIgvType,
+                'total_base_igv' => $subtotal,
+                'percentage_igv' => 18.00,
+                'total_igv' => $igv,
+                'system_isc_type_id' => null,
+                'total_base_isc' => 0,
+                'percentage_isc' => 0,
+                'total_isc' => 0,
+                'total_base_other_taxes' => 0,
+                'percentage_other_taxes' => 0,
+                'total_other_taxes' => 0,
+                'total_taxes' => $igv,
+                'price_type_id' => '01',
+                'unit_type_id' => $item->unit_type_id,
+                'total_value' => $subtotal,
+                'total_charge' => 0,
+                'total_discount' => 0,
+                'total' => $item_total,
+                'attributes' => [],
+                'charges' => [],
+                'discounts' => [],
+            ];
+
+            $documentItems[] = $documentItem;
+        }
 
         // Obtener el siguiente número correlativo para la serie
         $lastNumber = Document::getLastNumberBySerie($serie->number);
@@ -281,76 +515,6 @@ class BulkUploadController extends Controller
 
         // Determinar group_id según tipo de documento
         $groupId = ($serie->document_type_id === '01') ? '01' : '02';
-
-        // Obtener tipo de afectación del IGV del producto
-        $affectationIgvType = $item->sale_affectation_igv_type_id ?? '10';
-
-        $quantity = floatval($row['cantidad']);
-        $unit_price = floatval($item->sale_unit_price);
-
-        // Calcular según tipo de afectación
-        if ($affectationIgvType === '10') {
-            // GRAVADO: El precio incluye IGV, hay que separarlo
-            $unit_value = round($unit_price / 1.18, 10);
-            $subtotal = round($unit_value * $quantity, 2);
-            $igv = round($subtotal * 0.18, 2);
-            $total = round($subtotal + $igv, 2);
-            $has_igv = true;
-        } else {
-            // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
-            $unit_value = $unit_price;
-            $subtotal = round($unit_value * $quantity, 2);
-            $igv = 0;
-            $total = $subtotal;
-            $has_igv = false;
-        }
-
-        $documentItem = [
-            'item_id' => $item->id,
-            'item' => [
-                'id' => $item->id,
-                'description' => $item->description,
-                'item_type_id' => $item->item_type_id ?? '01',
-                'internal_id' => $item->internal_id ?? null,
-                'item_code' => $item->item_code ?? null,
-                'item_code_gs1' => $item->item_code_gs1 ?? null,
-                'unit_type_id' => $item->unit_type_id,
-                'currency_type_id' => 'PEN',
-                'sale_unit_price' => $unit_price,
-                'purchase_unit_price' => $item->purchase_unit_price ?? 0,
-                'has_igv' => $has_igv,
-                'is_set' => $item->is_set ?? false,
-                'amount_plastic_bag_taxes' => $item->amount_plastic_bag_taxes ?? 0,
-                'lots' => [],
-                'IdLoteSelected' => null,
-                'model' => $item->model ?? null,
-                'presentation' => [],
-            ],
-            'quantity' => $quantity,
-            'unit_value' => $unit_value,
-            'unit_price' => $unit_price,
-            'affectation_igv_type_id' => $affectationIgvType,
-            'total_base_igv' => $subtotal,
-            'percentage_igv' => 18.00,
-            'total_igv' => $igv,
-            'system_isc_type_id' => null,
-            'total_base_isc' => 0,
-            'percentage_isc' => 0,
-            'total_isc' => 0,
-            'total_base_other_taxes' => 0,
-            'percentage_other_taxes' => 0,
-            'total_other_taxes' => 0,
-            'total_taxes' => $igv,
-            'price_type_id' => '01',
-            'unit_type_id' => $item->unit_type_id,
-            'total_value' => $subtotal,
-            'total_charge' => 0,
-            'total_discount' => 0,
-            'total' => $total,
-            'attributes' => [],
-            'charges' => [],
-            'discounts' => [],
-        ];
 
         $documentData = [
             'type' => 'invoice',
@@ -377,20 +541,20 @@ class BulkUploadController extends Controller
             'total_discount' => 0,
             'total_exportation' => 0,
             'total_free' => 0,
-            'total_taxed' => $affectationIgvType === '10' ? $subtotal : 0,
-            'total_unaffected' => $affectationIgvType === '30' ? $subtotal : 0,
-            'total_exonerated' => $affectationIgvType === '20' ? $subtotal : 0,
-            'total_igv' => $igv,
+            'total_taxed' => $total_taxed,
+            'total_unaffected' => $total_unaffected,
+            'total_exonerated' => $total_exonerated,
+            'total_igv' => $total_igv,
             'total_base_isc' => 0,
             'total_isc' => 0,
             'total_base_other_taxes' => 0,
             'total_other_taxes' => 0,
             'total_plastic_bag_taxes' => 0,
-            'total_taxes' => $igv,
-            'total_value' => $subtotal,
+            'total_taxes' => $total_igv,
+            'total_value' => $total_value,
             'total' => $total,
             'subtotal' => $total,
-            'items' => [$documentItem],
+            'items' => $documentItems,
             'charges' => [],
             'discounts' => [],
             'attributes' => [],
@@ -458,11 +622,47 @@ class BulkUploadController extends Controller
 
         $document = $facturalo->getDocument();
 
-        // Actualizar record temporal
-        $record->update([
-            'status' => 'processed',
-            'document_id' => $document->id
+        // Actualizar todos los registros del grupo
+        foreach ($records as $record) {
+            $record->update([
+                'status' => 'processed',
+                'document_id' => $document->id
+            ]);
+        }
+    }
+
+    /**
+     * Export validation errors to Excel
+     *
+     * @param Request $request
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
+    public function exportErrors(Request $request)
+    {
+        $request->validate([
+            'batch_id' => 'required|string'
         ]);
+
+        $batchId = $request->input('batch_id');
+
+        // Verificar que existan errores para este batch
+        $errorsCount = BulkUploadTemp::ofBatch($batchId)
+            ->where(function($query) {
+                $query->where('is_valid', false)
+                      ->orWhere('status', 'error');
+            })
+            ->count();
+
+        if ($errorsCount === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay errores para exportar en este lote'
+            ], 404);
+        }
+
+        $export = new \App\Exports\BulkUploadErrorsExport($batchId);
+
+        return Excel::download($export, 'errores_carga_masiva_' . $batchId . '_' . date('Y-m-d_His') . '.xlsx');
     }
 
     /**

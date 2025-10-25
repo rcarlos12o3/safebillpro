@@ -125,6 +125,7 @@ Vue.component('cash-index', require('./views/tenant/cash/index.vue'));
 Vue.component('tenant-card-brands-index', require('./views/tenant/card_brands/index.vue'));
 Vue.component('tenant-pos-fast', require('./views/tenant/pos/fast.vue'));
 Vue.component('tenant-pos-garage', require('./views/tenant/pos/garage.vue'));
+Vue.component('tenant-bulk-upload-index', require('./views/tenant/bulk-upload/index.vue'));
 
 Vue.component('tenant-payment-method-index', require('./views/tenant/payment_method/index.vue'));
 Vue.component('tenant-payment-method-index', require('./views/tenant/payment_method/index.vue'));
