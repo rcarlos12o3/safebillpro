@@ -161,6 +161,14 @@ class UserController extends Controller
             $this->saveDefaultDocumentTypes($user, $request);
 
             if ($user->id != 1) {
+                // DEBUG: Ver qué llega en el request
+                \Log::info('=== DEBUG USER PERMISSIONS CONTROLLER ===');
+                \Log::info('User ID: ' . $user->id);
+                \Log::info('Modules from request: ' . json_encode($request->modules));
+                \Log::info('Levels from request: ' . json_encode($request->levels));
+                \Log::info('¿Contiene 95?', ['in_array' => in_array(95, $request->levels ?? []), 'in_array_str' => in_array('95', $request->levels ?? [])]);
+                \Log::info('=========================================');
+
                 $user->setModuleAndLevelModule($request->modules,$request->levels);
             }
 

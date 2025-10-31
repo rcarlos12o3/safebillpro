@@ -952,6 +952,14 @@ export default {
             this.form.modules = modules;
             this.form.levels = levels;
 
+            // DEBUG: Ver qué se está enviando
+            console.log('=== DEBUG USER PERMISSIONS ===');
+            console.log('Modules selected:', modules);
+            console.log('Levels selected:', levels);
+            console.log('Nodos checkeados:', modulesAndLevelsSelecteds.map(n => ({ id: n.id, desc: n.description, isParent: n.is_parent })));
+            console.log('¿Contiene bulk_upload (95)?', levels.includes('95') || levels.includes(95));
+            console.log('==============================');
+
             if (modules.length < 1) {
                 return this.$message.error("Debe seleccionar al menos un módulo");
             }
