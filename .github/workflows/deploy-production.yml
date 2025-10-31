@@ -199,6 +199,10 @@ jobs:
             echo "Running database migrations..."
             docker exec safebillpro-fpm php artisan migrate --force
 
+            # Ejecutar migraciones de tenants
+            echo "Running tenant migrations..."
+            docker exec safebillpro-fpm php artisan tenants:migrate --force
+
             # Reiniciar servicios (si usas queue workers o supervisor)
             echo "Restarting services..."
             docker exec safebillpro-supervisor supervisorctl restart all 2>/dev/null || echo "Supervisor not configured"
