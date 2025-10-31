@@ -64,13 +64,38 @@ class SummaryController extends Controller
         ];
     }
 
-    public function documents(SummaryDocumentsRequest $request) 
+    public function documents(SummaryDocumentsRequest $request)
     {
         $company = Company::active();
         $date_of_reference = $request->input('date_of_reference');
-        
+
+        // Debug: Ver qué documentos hay en esa fecha
+        $allDocumentsInDate = Document::where('date_of_issue', $date_of_reference)->get();
+        \Log::info('=== DEBUG SUMMARY DOCUMENTS ===', [
+            'date_of_reference' => $date_of_reference,
+            'company_soap_type_id' => $company->soap_type_id,
+            'total_documents_in_date' => $allDocumentsInDate->count(),
+            'documents_by_group' => $allDocumentsInDate->groupBy('group_id')->map->count(),
+            'documents_by_state' => $allDocumentsInDate->groupBy('state_type_id')->map->count(),
+            'documents_by_soap_type' => $allDocumentsInDate->groupBy('soap_type_id')->map->count(),
+            'documents_with_ticket_shipment' => $allDocumentsInDate->where('ticket_single_shipment', true)->count(),
+            'sample_document' => $allDocumentsInDate->first() ? [
+                'id' => $allDocumentsInDate->first()->id,
+                'number' => $allDocumentsInDate->first()->number,
+                'soap_type_id' => $allDocumentsInDate->first()->soap_type_id,
+                'group_id' => $allDocumentsInDate->first()->group_id,
+                'state_type_id' => $allDocumentsInDate->first()->state_type_id,
+                'ticket_single_shipment' => $allDocumentsInDate->first()->ticket_single_shipment
+            ] : null
+        ]);
+
         $documents = Document::filterDocumentsForSummary($date_of_reference, $company->soap_type_id)->get();
-         
+
+        \Log::info('=== FILTERED DOCUMENTS ===', [
+            'count' => $documents->count(),
+            'document_numbers' => $documents->pluck('number')
+        ]);
+
         // $documents = Document::query()
         //     ->where('date_of_issue', $request->input('date_of_reference'))
         //     ->where('soap_type_id', $company->soap_type_id)
@@ -78,7 +103,7 @@ class SummaryController extends Controller
         //     ->where('state_type_id', '01')
         //     ->take(500)
         //     ->get();
-            
+
         if (count($documents) === 0) {
             return [
                 'success' => false,

@@ -551,13 +551,16 @@ class BulkUploadController extends Controller
         // Determinar group_id según tipo de documento
         $groupId = ($serie->document_type_id === '01') ? '01' : '02';
 
+        // Obtener soap_type_id de la empresa activa
+        $company = \App\Models\Tenant\Company::active();
+
         $documentData = [
             'type' => 'invoice',
             'user_id' => auth()->id(),
             'external_id' => Str::uuid()->toString(),
             'establishment_id' => $establishment->id,
             'establishment' => $establishmentData,
-            'soap_type_id' => $serie->document_type_id,
+            'soap_type_id' => $company->soap_type_id,
             'state_type_id' => '01',
             'ubl_version' => '2.1',
             'group_id' => $groupId,
