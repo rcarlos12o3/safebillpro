@@ -93,7 +93,12 @@
                         </div>
                         <div class="alert alert-success mt-2">
                             <strong>✓ Validación automática de stock</strong><br>
-                            <strong>✓ Creación automática de clientes nuevos</strong>
+                            <strong>✓ Creación automática de clientes nuevos</strong><br>
+                            <strong>✓ Pago automático en efectivo (contado)</strong><br>
+                            <strong>✓ Registro automático en caja abierta</strong>
+                        </div>
+                        <div class="alert alert-warning mt-2">
+                            <strong>⚠ Importante:</strong> Debes tener una caja abierta para procesar documentos.
                         </div>
                     </div>
                 </div>

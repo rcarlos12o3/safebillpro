@@ -10,6 +10,8 @@ use App\Models\Tenant\Person;
 use App\Models\Tenant\Item;
 use App\Models\Tenant\Series;
 use App\Models\Tenant\BulkUploadTemp;
+use App\Models\Tenant\Cash;
+use App\Models\Tenant\CashDocument;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -296,6 +298,18 @@ class BulkUploadController extends Controller
         try {
             $batchId = $request->input('batch_id');
 
+            // Verificar que exista una caja abierta del usuario
+            $cash = Cash::where('user_id', auth()->id())
+                ->where('state', true)
+                ->first();
+
+            if (!$cash) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No tienes una caja abierta. Por favor, abre una caja antes de procesar documentos.'
+                ], 422);
+            }
+
             // Obtener todos los registros válidos del batch
             $records = BulkUploadTemp::ofBatch($batchId)
                 ->valid()
@@ -319,8 +333,8 @@ class BulkUploadController extends Controller
             // Procesar cada grupo de documento
             foreach ($groupedRecords as $documentGroupId => $groupRecords) {
                 try {
-                    DB::connection('tenant')->transaction(function () use ($groupRecords, &$successCount) {
-                        $this->processDocumentGroup($groupRecords);
+                    DB::connection('tenant')->transaction(function () use ($groupRecords, $cash, &$successCount) {
+                        $this->processDocumentGroup($groupRecords, $cash);
                         $successCount++;
                     });
                 } catch (\Exception $e) {
@@ -366,9 +380,10 @@ class BulkUploadController extends Controller
      * Process a group of records (items) and create a single document
      *
      * @param \Illuminate\Support\Collection $records
+     * @param Cash $cash
      * @return void
      */
-    private function processDocumentGroup($records)
+    private function processDocumentGroup($records, $cash)
     {
         // Tomar el primer registro para obtener datos del documento
         $firstRecord = $records->first();
@@ -559,7 +574,11 @@ class BulkUploadController extends Controller
             'discounts' => [],
             'attributes' => [],
             'guides' => [],
-            'payments' => [],
+            'payments' => [[
+                'payment_method_type_id' => '01', // Efectivo
+                'date_of_payment' => $dateOfIssue,
+                'payment' => $total,
+            ]],
             'payment_condition_id' => '01', // Contado
             'fee' => [], // Sin cuotas (pago al contado)
             'actions' => ['format_pdf' => 'a4'],
@@ -621,6 +640,12 @@ class BulkUploadController extends Controller
         }
 
         $document = $facturalo->getDocument();
+
+        // Registrar el documento en la caja abierta
+        CashDocument::create([
+            'cash_id' => $cash->id,
+            'document_id' => $document->id,
+        ]);
 
         // Actualizar todos los registros del grupo
         foreach ($records as $record) {
