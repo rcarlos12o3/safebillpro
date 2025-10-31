@@ -201,7 +201,7 @@ jobs:
 
             # Ejecutar migraciones de tenants
             echo "Running tenant migrations..."
-            docker exec safebillpro-fpm php artisan tenants:migrate --force
+            docker exec safebillpro-fpm php artisan tenancy:migrate --force
 
             # Reiniciar servicios (si usas queue workers o supervisor)
             echo "Restarting services..."
