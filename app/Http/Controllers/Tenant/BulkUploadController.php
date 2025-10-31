@@ -432,11 +432,31 @@ class BulkUploadController extends Controller
             $row = $record->row_data;
             $item = Item::find($row['item_id']);
 
+            // DEBUG: Ver qué datos tiene row_data
+            \Log::info('=== DEBUG BULK UPLOAD PRICE ===', [
+                'item_id' => $row['item_id'],
+                'item_description' => $item->description,
+                'row_data_keys' => array_keys($row),
+                'row_item_price' => $row['item_price'] ?? 'NO EXISTE',
+                'item_sale_unit_price' => $item->sale_unit_price,
+                'full_row_data' => $row
+            ]);
+
             // Obtener tipo de afectación del IGV del producto
             $affectationIgvType = $item->sale_affectation_igv_type_id ?? '10';
 
             $quantity = floatval($row['cantidad']);
-            $unit_price = floatval($item->sale_unit_price);
+            // Usar precio del Excel si está presente, sino usar precio del inventario
+            if (isset($row['precio_unit']) && !empty($row['precio_unit']) && floatval($row['precio_unit']) > 0) {
+                $unit_price = floatval($row['precio_unit']);
+            } else {
+                $unit_price = floatval($item->sale_unit_price);
+            }
+
+            \Log::info('=== PRECIO FINAL USADO ===', [
+                'unit_price' => $unit_price,
+                'viene_de_excel' => isset($row['precio_unit']) && !empty($row['precio_unit']) && floatval($row['precio_unit']) > 0
+            ]);
 
             // Calcular según tipo de afectación
             if ($affectationIgvType === '10') {

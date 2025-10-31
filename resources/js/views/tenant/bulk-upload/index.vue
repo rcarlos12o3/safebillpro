@@ -42,6 +42,10 @@
                         <h4 class="mt-4">2. Subir Archivo Excel</h4>
                         <p class="text-muted">Formatos soportados: .xlsx, .xls, .csv (Máx. 10MB)</p>
 
+                        <div v-if="!dateOfIssue" class="alert alert-warning mb-3">
+                            <i class="el-icon-warning"></i> <strong>Primero debes seleccionar una fecha de emisión</strong> para poder subir el archivo Excel.
+                        </div>
+
                         <el-upload
                             class="upload-demo"
                             drag
@@ -55,7 +59,7 @@
                             <i class="el-icon-upload"></i>
                             <div class="el-upload__text">Arrastra el archivo aquí o <em>haz clic para subir</em></div>
                             <div class="el-upload__tip" slot="tip">
-                                {{ dateOfIssue ? 'Archivos Excel (.xlsx, .xls, .csv) máximo 10MB' : 'Primero selecciona una fecha de emisión' }}
+                                {{ dateOfIssue ? 'Archivos Excel (.xlsx, .xls, .csv) máximo 10MB' : 'Esperando fecha de emisión...' }}
                             </div>
                         </el-upload>
 
@@ -418,7 +422,8 @@
                     v-model="productSearch"
                     placeholder="Buscar producto..."
                     prefix-icon="el-icon-search"
-                    clearable>
+                    clearable
+                    key="product-search-input">
                 </el-input>
             </div>
 
@@ -626,10 +631,15 @@ export default {
             }
             const search = this.productSearch.toLowerCase();
             return this.allProducts.filter(product => {
+                // Validar que los campos no sean null/undefined antes de usar toLowerCase
+                const description = (product.description || '').toLowerCase();
+                const internalId = (product.internal_id || '').toLowerCase();
+                const productId = (product.id || '').toString();
+
                 return (
-                    product.description.toLowerCase().includes(search) ||
-                    product.internal_id.toLowerCase().includes(search) ||
-                    product.id.toString().includes(search)
+                    description.includes(search) ||
+                    internalId.includes(search) ||
+                    productId.includes(search)
                 );
             });
         }
@@ -771,13 +781,20 @@ export default {
         },
         showProductSelector() {
             this.productSelectorVisible = true;
+            this.productSearch = ''; // Limpiar búsqueda anterior
+            this.selectedProducts = []; // Limpiar selección anterior
             if (this.allProducts.length === 0) {
                 this.loadProducts();
             }
         },
         loadProducts() {
             this.loadingProducts = true;
-            this.$http.get('/items/records')
+            // Cargar TODOS los productos sin paginación (incluyendo servicios)
+            this.$http.get('/items/records', {
+                params: {
+                    limit: 10000 // Límite alto para obtener todos los productos
+                }
+            })
                 .then(response => {
                     this.allProducts = response.data.data || [];
                 })
