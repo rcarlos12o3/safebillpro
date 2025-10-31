@@ -139,6 +139,14 @@
                             class="mt-3"
                             :closable="false">
                         </el-alert>
+
+                        <el-alert
+                            title="Numeración Referencial"
+                            type="warning"
+                            class="mt-2"
+                            :closable="false">
+                            <span>Los números de comprobante mostrados son <strong>referenciales</strong> y pueden cambiar si se emiten documentos individuales antes de procesar este lote.</span>
+                        </el-alert>
                     </div>
 
                     <el-table
@@ -164,6 +172,22 @@
                             prop="data.serie"
                             label="Serie"
                             width="90">
+                        </el-table-column>
+                        <el-table-column
+                            label="N° Ref."
+                            width="90"
+                            align="center">
+                            <template slot="header">
+                                <el-tooltip content="Numeración referencial. Puede cambiar si emiten documentos individuales antes de procesar el lote." placement="top">
+                                    <span>N° Ref. <i class="el-icon-info"></i></span>
+                                </el-tooltip>
+                            </template>
+                            <template slot-scope="scope">
+                                <el-tag v-if="scope.row.referential_number" type="info" size="small" effect="plain">
+                                    {{ scope.row.referential_number }}
+                                </el-tag>
+                                <span v-else class="text-muted">-</span>
+                            </template>
                         </el-table-column>
                         <el-table-column
                             label="Cliente"

@@ -16,6 +16,8 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
     protected $stockReservations = []; // Stock "reservado" por filas anteriores
     protected $seriesLastDates = []; // Última fecha de emisión por serie
     protected $dateOfIssue = null; // Fecha de emisión del lote actual
+    protected $seriesLastNumbers = []; // Último número de cada serie
+    protected $seriesDocumentCount = []; // Contador de documentos por serie en este Excel
 
     public function __construct($dateOfIssue = null)
     {
@@ -486,6 +488,50 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
     }
 
     /**
+     * Get last number for a series
+     *
+     * @param string $serieNumber
+     * @return int
+     */
+    protected function getLastNumberForSerie($serieNumber)
+    {
+        if (!isset($this->seriesLastNumbers[$serieNumber])) {
+            $lastDocument = \App\Models\Tenant\Document::where('series', $serieNumber)
+                ->orderBy('number', 'desc')
+                ->first();
+
+            $this->seriesLastNumbers[$serieNumber] = $lastDocument ? $lastDocument->number : 0;
+        }
+
+        return $this->seriesLastNumbers[$serieNumber];
+    }
+
+    /**
+     * Calculate referential number for a document
+     *
+     * @param string $serieNumber
+     * @return int
+     */
+    protected function calculateReferentialNumber($serieNumber)
+    {
+        // Obtener el último número de la serie en la base de datos
+        $lastNumber = $this->getLastNumberForSerie($serieNumber);
+
+        // Obtener cuántos documentos de esta serie ya hemos procesado en este Excel
+        if (!isset($this->seriesDocumentCount[$serieNumber])) {
+            $this->seriesDocumentCount[$serieNumber] = 0;
+        }
+
+        // Incrementar el contador de documentos de esta serie
+        $this->seriesDocumentCount[$serieNumber]++;
+
+        // Calcular el número referencial
+        $referentialNumber = $lastNumber + $this->seriesDocumentCount[$serieNumber];
+
+        return $referentialNumber;
+    }
+
+    /**
      * Group rows by document (same serie + customer + fecha)
      * Si tienen documento_id, agrupamos por ese ID
      * Si no tienen documento_id, cada fila es un documento separado
@@ -513,9 +559,17 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
 
             // Inicializar grupo si no existe
             if (!isset($this->groupedDocuments[$groupKey])) {
+                $serieNumber = $row['serie'] ?? null;
+
+                // Calcular número referencial para este documento
+                $referentialNumber = null;
+                if ($serieNumber) {
+                    $referentialNumber = $this->calculateReferentialNumber($serieNumber);
+                }
+
                 $this->groupedDocuments[$groupKey] = [
                     'document_id' => $groupKey,
-                    'serie' => $row['serie'] ?? null,
+                    'serie' => $serieNumber,
                     'series_id' => $validatedRow['series_id'] ?? null,
                     'document_type_id' => $validatedRow['document_type_id'] ?? null,
                     'establishment_id' => $validatedRow['establishment_id'] ?? null,
@@ -526,6 +580,7 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
                     'numero_documento' => isset($row['numero_documento']) ? trim((string)$row['numero_documento']) : null,
                     'nombre_cliente' => isset($row['nombre_cliente']) ? trim((string)$row['nombre_cliente']) : null,
                     'direccion' => isset($row['direccion']) ? trim((string)$row['direccion']) : '-',
+                    'referential_number' => $referentialNumber,
                     'items' => [],
                     'is_valid' => true,
                     'errors' => [],
@@ -555,6 +610,19 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
             if (count($document['items']) > 1) {
                 // Verificar que todos los items tengan datos consistentes
                 // (esto ya está garantizado por la agrupación, pero podemos agregar validaciones adicionales)
+            }
+        }
+
+        // Propagar el número referencial a cada fila validada
+        foreach ($this->groupedDocuments as $groupKey => $document) {
+            foreach ($document['row_numbers'] as $rowNumber) {
+                // Buscar la fila en validatedRows y agregar el número referencial
+                foreach ($this->validatedRows as &$validatedRow) {
+                    if ($validatedRow['row_number'] === $rowNumber) {
+                        $validatedRow['referential_number'] = $document['referential_number'];
+                        break;
+                    }
+                }
             }
         }
     }
