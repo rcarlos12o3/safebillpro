@@ -131,14 +131,25 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
             }
         }
 
-        // Calcular totales
-        if (isset($validatedRow['item_price']) && isset($row['cantidad'])) {
+        // Calcular totales según tipo de afectación IGV
+        if (isset($validatedRow['item_price']) && isset($row['cantidad']) && isset($item)) {
             $unit_price = floatval($validatedRow['item_price']);
             $quantity = floatval($row['cantidad']);
-            $unit_value = round($unit_price / 1.18, 10);
-            $subtotal = round($unit_value * $quantity, 2);
-            $igv = round($subtotal * 0.18, 2);
-            $total = round($subtotal + $igv, 2);
+            $affectationIgvType = $item->sale_affectation_igv_type_id ?? '10';
+
+            if ($affectationIgvType === '10') {
+                // GRAVADO: El precio incluye IGV, separarlo
+                $unit_value = round($unit_price / 1.18, 10);
+                $subtotal = round($unit_value * $quantity, 2);
+                $igv = round($subtotal * 0.18, 2);
+                $total = round($subtotal + $igv, 2);
+            } else {
+                // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
+                $unit_value = $unit_price;
+                $subtotal = round($unit_value * $quantity, 2);
+                $igv = 0;
+                $total = $subtotal;
+            }
 
             $validatedRow['calculated_total'] = $total;
             $validatedRow['calculated_subtotal'] = $subtotal;
