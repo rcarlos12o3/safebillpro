@@ -341,6 +341,16 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
         $nombreCliente = trim((string)$row['nombre_cliente']);
         $direccion = isset($row['direccion']) && trim((string)$row['direccion']) !== '' ? trim((string)$row['direccion']) : '-';
 
+        // Autocompletar con ceros a la izquierda para DNI (tipo 1)
+        // Si el DNI tiene entre 5 y 7 dígitos, completar hasta 8 dígitos
+        if ($tipoDocumento === '1') {
+            $documentLength = strlen($numeroDocumento);
+            if ($documentLength >= 5 && $documentLength < 8) {
+                $zerosToAdd = 8 - $documentLength;
+                $numeroDocumento = str_repeat('0', $zerosToAdd) . $numeroDocumento;
+            }
+        }
+
         // Validar formato de documento
         $documentValidation = $this->validateDocumentFormat($tipoDocumento, $numeroDocumento);
         if (!$documentValidation['valid']) {
