@@ -59,7 +59,14 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
                 $validatedRow['errors'][] = "Producto ID {$row['item_id']} no encontrado";
             } else {
                 $validatedRow['item_description'] = $item->description;
-                $validatedRow['item_price'] = $item->sale_unit_price;
+
+                // Usar precio del Excel si está presente, sino usar precio del inventario
+                // Esto permite flexibilidad para descuentos por volumen o ajustes de precio
+                if (isset($row['precio_unit']) && !empty($row['precio_unit']) && floatval($row['precio_unit']) > 0) {
+                    $validatedRow['item_price'] = floatval($row['precio_unit']);
+                } else {
+                    $validatedRow['item_price'] = $item->sale_unit_price;
+                }
 
                 // Validar stock disponible (solo si está configurado)
                 if (config('bulk_upload.validate_stock', true) && isset($row['cantidad'])) {
