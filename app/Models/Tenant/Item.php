@@ -1040,6 +1040,17 @@ class Item extends ModelTenant
             'restrict_sale_cpe' => $this->restrict_sale_cpe,
             'image_url' => $this->getImageUrl(),
             'name' => $this->name,
+            'item_sizes' => $this->getItemSize()->map(function ($itemSize) {
+                return [
+                    'id' => $itemSize->id,
+                    'active' => $itemSize->active,
+                    'cat_item_size_id' => $itemSize->cat_item_size_id,
+                    'cat_item_size' => $itemSize->cat_item_size ? [
+                        'id' => $itemSize->cat_item_size->id,
+                        'name' => $itemSize->cat_item_size->name,
+                    ] : null,
+                ];
+            }),
         ];
 
         // El nombre de producto, por defecto, sera la misma descripcion.
@@ -1235,6 +1246,17 @@ class Item extends ModelTenant
             }),
             'is_for_production'=>$this->isIsForProduction(),
             'supplies' => $itemSupply,
+            'item_sizes' => $this->getItemSize()->map(function ($itemSize) {
+                return [
+                    'id' => $itemSize->id,
+                    'active' => $itemSize->active,
+                    'cat_item_size_id' => $itemSize->cat_item_size_id,
+                    'cat_item_size' => $itemSize->cat_item_size ? [
+                        'id' => $itemSize->cat_item_size->id,
+                        'name' => $itemSize->cat_item_size->name,
+                    ] : null,
+                ];
+            }),
 
         ];
     }
@@ -1512,7 +1534,7 @@ class Item extends ModelTenant
         return ItemProductFamily::where('item_id', $this->id)->where('active',1)->get();
     }
     public function getItemSize(){
-        return ItemSize::where('item_id', $this->id)->where('active',1)->get();
+        return ItemSize::where('item_id', $this->id)->where('active',1)->with('cat_item_size')->get();
     }
 
     /**

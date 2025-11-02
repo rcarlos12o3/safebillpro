@@ -9,6 +9,18 @@ function ItemOptionDescription(item) {
     ) {
         data += item.full_description ;
     }
+
+    // Agregar talla si existe
+    if (item !== undefined
+        && item.item_sizes !== undefined
+        && item.item_sizes.length > 0
+    ) {
+        // Buscar la talla activa (puede ser boolean true o integer 1)
+        const activeSize = item.item_sizes.find(size => size.active === 1 || size.active === true);
+        if (activeSize && activeSize.cat_item_size && activeSize.cat_item_size.name) {
+            data += ' - ' + activeSize.cat_item_size.name;
+        }
+    }
     /*
     if (item !== undefined
         && item.stock !== undefined

@@ -408,6 +408,8 @@ function getUniqueArray(arr, keyProps) {
 }
 
 function showNamePdfOfDescription(item, show_pdf_name) {
+    let description = '';
+
     if (show_pdf_name !== undefined &&
         show_pdf_name === true &&
         item !== undefined &&
@@ -418,10 +420,34 @@ function showNamePdfOfDescription(item, show_pdf_name) {
         temn = temn.substring(3)
         temn = temn.slice(0, -4)
         if (temn.length > 0) {
-            return temn;
+            description = temn;
+        } else {
+            description = item.description;
+        }
+    } else {
+        description = item.description;
+    }
+
+    // Agregar talla activa si existe (solo para visualización en tabla)
+    // Intentar varias rutas posibles donde puede estar la talla
+    let sizeName = null;
+
+    if (item.extra && item.extra.CatItemSize && item.extra.CatItemSize.cat_item_size && item.extra.CatItemSize.cat_item_size.name) {
+        sizeName = item.extra.CatItemSize.cat_item_size.name;
+    } else if (item.extra && item.extra.CatItemSize && item.extra.CatItemSize.name) {
+        sizeName = item.extra.CatItemSize.name;
+    } else if (item.item_sizes && Array.isArray(item.item_sizes) && item.item_sizes.length > 0) {
+        const activeSize = item.item_sizes.find(size => size.active === 1 || size.active === true);
+        if (activeSize && activeSize.cat_item_size && activeSize.cat_item_size.name) {
+            sizeName = activeSize.cat_item_size.name;
         }
     }
-    return item.description
+
+    if (sizeName) {
+        description += ' - ' + sizeName;
+    }
+
+    return description;
 }
 
 function sumAmountDiscountsNoBaseByItem(row) {

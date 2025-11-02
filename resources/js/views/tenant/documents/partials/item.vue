@@ -1919,6 +1919,11 @@ export default {
                     }
                 })
                 this.$store.commit('setExtraCatItemSize', temp)
+
+                // Auto-seleccionar la primera talla si existe
+                if (item.CatItemSize && item.CatItemSize.length > 0) {
+                    this.form.item.extra.CatItemSize = item.CatItemSize[0];
+                }
                 temp = [];
                 this.CatItemMoldProperty.find(obj => {
                     for (var i = 0, iLen = item.CatItemMoldProperty.length; i < iLen; i++) {

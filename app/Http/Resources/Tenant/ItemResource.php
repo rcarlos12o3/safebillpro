@@ -191,6 +191,17 @@
                 'quantity_of_points' => $this->quantity_of_points,
                 'factory_code' => $this->factory_code,
                 'restrict_sale_cpe' => $this->restrict_sale_cpe,
+                'item_sizes' => $this->getItemSize()->map(function ($itemSize) {
+                    return [
+                        'id' => $itemSize->id,
+                        'active' => $itemSize->active,
+                        'cat_item_size_id' => $itemSize->cat_item_size_id,
+                        'cat_item_size' => $itemSize->cat_item_size ? [
+                            'id' => $itemSize->cat_item_size->id,
+                            'name' => $itemSize->cat_item_size->name,
+                        ] : null,
+                    ];
+                }),
             ];
         }
     }

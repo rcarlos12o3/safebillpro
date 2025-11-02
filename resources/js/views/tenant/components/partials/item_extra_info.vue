@@ -351,9 +351,17 @@ export default {
             multiple: false,
             clearable: true,
             textplaceholder: 'Ninguno seleccionado',
-            activePanel: 0,
+            activePanel: [],
             infoPop: 'No será enviado a SUNAT',
 
+        }
+    },
+    watch: {
+        'form.item.extra.CatItemSize': function(newVal) {
+            // Abrir el acordeón automáticamente cuando se selecciona una talla
+            if (newVal && this.activePanel.indexOf('1') === -1) {
+                this.activePanel = ['1'];
+            }
         }
     },
     created() {

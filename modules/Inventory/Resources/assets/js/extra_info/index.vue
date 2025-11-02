@@ -35,34 +35,34 @@
                     </h6>
                     <ul class="card-report-links">
                         <li>
-                            <a :href="`./extra_info_items/item-size`">Tallas/Tamaño</a>
+                            <a :href="`/extra_info_items/item-size`">Tallas/Tamaño</a>
                         </li>
                         <li>
-                            <a :href="`./extra_info_items/colors`">Lista de colores</a>
+                            <a :href="`/extra_info_items/colors`">Lista de colores</a>
                         </li>
                         <li>
-                            <a :href="`./extra_info_items/item-units-per-package`">Lista de unidades por paquete</a>
+                            <a :href="`/extra_info_items/item-units-per-package`">Lista de unidades por paquete</a>
                         </li>
                         <li>
-                            <a :href="`./extra_info_items/item-units-business`">Lista de unidades de negocio</a>
-                        </li>
-
-                        <li>
-                            <a :href="`./extra_info_items/item-status`">Lista de status</a>
+                            <a :href="`/extra_info_items/item-units-business`">Lista de unidades de negocio</a>
                         </li>
 
                         <li>
-                            <a :href="`./extra_info_items/item-package-measurements`">Lista de unidades de medida</a>
+                            <a :href="`/extra_info_items/item-status`">Lista de status</a>
                         </li>
 
                         <li>
-                            <a :href="`./extra_info_items/item-mold-cavities`">Lista de cavidades de molde</a>
+                            <a :href="`/extra_info_items/item-package-measurements`">Lista de unidades de medida</a>
+                        </li>
+
+                        <li>
+                            <a :href="`/extra_info_items/item-mold-cavities`">Lista de cavidades de molde</a>
                         </li>
                         <li>
-                            <a :href="`./extra_info_items/item-mold-property`">Propiedades de molde</a>
+                            <a :href="`/extra_info_items/item-mold-property`">Propiedades de molde</a>
                         </li>
                         <li>
-                            <a :href="`./extra_info_items/item-prodcut-family`">Lista de familia de producto</a>
+                            <a :href="`/extra_info_items/item-prodcut-family`">Lista de familia de producto</a>
                         </li>
 
 

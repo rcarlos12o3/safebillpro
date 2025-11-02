@@ -157,6 +157,7 @@
                         <th>Imagen</th>
                         <th>Nombre</th>
                         <th v-if="columns.description.visible">Descripción</th>
+                        <th v-if="(columns.item_sizes !== undefined && columns.item_sizes.visible === true)">Tallas</th>
                         <th v-if="columns.model.visible">Modelo</th>
                         <th v-if="columns.brand.visible">Marca</th>
                         <th v-if="columns.item_code.visible">Cód. SUNAT</th>
@@ -198,6 +199,12 @@
                         </td>
                         <td>{{ row.description }}</td>
                         <td v-if="columns.description.visible">{{ row.name }}</td>
+                        <td v-if="(columns.item_sizes !== undefined && columns.item_sizes.visible === true)">
+                            <span v-if="row.item_sizes && row.item_sizes.length > 0">
+                                {{ row.item_sizes.map(s => s.cat_item_size ? s.cat_item_size.name : '').filter(n => n).join(', ') }}
+                            </span>
+                            <span v-else>-</span>
+                        </td>
                         <td v-if="columns.model.visible">{{ row.model }}</td>
                         <td v-if="columns.brand.visible">{{ row.brand }}</td>
                         <td v-if="columns.item_code.visible">{{ row.item_code }}</td>
@@ -543,6 +550,10 @@ export default {
                     title: 'Stock Por datos extra',
                     visible: false
                 },
+                item_sizes: {
+                    title: 'Tallas',
+                    visible: false
+                },
             },
             item_unit_types: [],
             titleTopBar: '',
@@ -555,14 +566,6 @@ export default {
         this.$store.commit('setConfiguration', this.configuration);
         this.loadConfiguration()
 
-        if (this.config.is_pharmacy !== true) {
-            delete this.columns.sanitary;
-            delete this.columns.cod_digemid;
-        }
-        if (this.config.show_extra_info_to_item !== true) {
-            delete this.columns.extra_data;
-
-        }
         if (this.type === 'ZZ') {
             this.titleTopBar = 'Servicios';
             this.title = 'Listado de servicios';
@@ -576,6 +579,22 @@ export default {
         });
         this.canCreateProduct();
         this.getItems()
+    },
+    mounted() {
+        // Cargar preferencias de columnas desde localStorage
+        const savedPreferences = localStorage.getItem('items_columns_preferences');
+        if (savedPreferences) {
+            try {
+                const preferences = JSON.parse(savedPreferences);
+                Object.keys(preferences).forEach(key => {
+                    if (this.columns[key] !== undefined && this.columns[key].visible !== undefined) {
+                        this.columns[key].visible = preferences[key];
+                    }
+                });
+            } catch (e) {
+                console.error('Error loading column preferences:', e);
+            }
+        }
     },
     computed: {
         ...mapState([
@@ -595,6 +614,38 @@ export default {
         },
         itemUrl() {
             return this.type === 'ZZ' ? '/services' : '/items';
+        }
+    },
+    watch: {
+        config: {
+            handler(newConfig) {
+                if (newConfig && Object.keys(newConfig).length > 0) {
+                    // Re-initialize columns based on loaded config
+                    if (newConfig.is_pharmacy !== true) {
+                        delete this.columns.sanitary;
+                        delete this.columns.cod_digemid;
+                    }
+                    if (newConfig.show_extra_info_to_item !== true) {
+                        delete this.columns.extra_data;
+                        delete this.columns.item_sizes;
+                    }
+                }
+            },
+            deep: true,
+            immediate: false
+        },
+        columns: {
+            handler(newColumns) {
+                // Guardar preferencias de columnas en localStorage
+                const columnsPreferences = {};
+                Object.keys(newColumns).forEach(key => {
+                    if (newColumns[key].visible !== undefined) {
+                        columnsPreferences[key] = newColumns[key].visible;
+                    }
+                });
+                localStorage.setItem('items_columns_preferences', JSON.stringify(columnsPreferences));
+            },
+            deep: true
         }
     },
     methods: {
