@@ -744,6 +744,22 @@
                                         v-text="errors.enabled_price_items_dispatch[0]"></small>
                                 </div>
                             </div>
+                            <div class="col-md-6 mt-4">
+                                <label class="control-label">
+                                    Mostrar marca en listado de items
+                                    <el-tooltip class="item"
+                                        content="Muestra la marca del producto en el selector de items al crear documentos"
+                                        effect="dark" placement="top-start">
+                                        <i class="fa fa-info-circle"></i>
+                                    </el-tooltip>
+                                </label>
+                                <div :class="{ 'has-danger': errors.show_brand_in_item_list }" class="form-group">
+                                    <el-switch v-model="form.show_brand_in_item_list" active-text="Si"
+                                        inactive-text="No" @change="submit"></el-switch>
+                                    <small v-if="errors.show_brand_in_item_list" class="form-control-feedback"
+                                        v-text="errors.show_brand_in_item_list[0]"></small>
+                                </div>
+                            </div>
                         </div>
                     </el-tab-pane>
                     <el-tab-pane class="mb-3" name="third">
@@ -2437,6 +2453,7 @@ export default {
                 condition_sale_purchase_price_to_item: false,
                 show_seller_in_pdf: true,
                 show_bank_accounts_in_pdf: true,
+                show_brand_in_item_list: true,
             };
         },
         UpdateFormPurchase(e) {

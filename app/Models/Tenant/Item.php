@@ -770,10 +770,17 @@ class Item extends ModelTenant
         } else {
             $stock = '';
         }
+
+        // Verificar si se debe mostrar la marca según la configuración
+        $configuration = Configuration::query()->first();
+        $show_brand = $configuration && isset($configuration->show_brand_in_item_list)
+            ? (bool)$configuration->show_brand_in_item_list
+            : true;
+
         if($extended == false) {
-            $desc = "{$desc} - {$brand}";
+            $desc = $show_brand ? "{$desc} - {$brand}" : $desc;
         }else {
-            $desc = "{$desc} - {$category} - {$brand}";
+            $desc = $show_brand ? "{$desc} - {$category} - {$brand}" : "{$desc} - {$category}";
         }
         return [
             'full_description'      => $desc,

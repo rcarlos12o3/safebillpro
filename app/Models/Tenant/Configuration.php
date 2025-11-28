@@ -322,7 +322,8 @@
             'show_bank_accounts_in_pdf',
             'enabled_price_items_dispatch',
             'legend_footer_sale',
-            'exact_discount'
+            'exact_discount',
+            'show_brand_in_item_list'
         ];
 
         protected $casts = [
@@ -463,7 +464,8 @@
             'show_seller_in_pdf' => 'bool',
             'show_bank_accounts_in_pdf' => 'bool',
             'enabled_price_items_dispatch' => 'bool',
-            'exact_discount' => 'bool'
+            'exact_discount' => 'bool',
+            'show_brand_in_item_list' => 'bool'
         ];
 
         protected $hidden = [
@@ -727,7 +729,8 @@
                 'show_seller_in_pdf' => $this->show_seller_in_pdf,
                 'show_bank_accounts_in_pdf' => $this->show_bank_accounts_in_pdf,
                 'enabled_price_items_dispatch' => $this->enabled_price_items_dispatch,
-                'exact_discount' => $this->exact_discount
+                'exact_discount' => $this->exact_discount,
+                'show_brand_in_item_list' => (bool)$this->show_brand_in_item_list
             ];
         }
 
