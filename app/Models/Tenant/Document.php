@@ -1442,7 +1442,8 @@ class Document extends ModelTenant
             ->where('soap_type_id', $soap_type_id)
             ->where('group_id', '02')
             ->where('state_type_id', '01')
-            ->where('ticket_single_shipment', false)
+            // Removido filtro de ticket_single_shipment para permitir incluir boletas
+            // que fallaron en envío individual y necesitan ir por resumen diario
             ->take(500);
     }
 
