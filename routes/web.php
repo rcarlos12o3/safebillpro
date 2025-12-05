@@ -208,6 +208,13 @@ if ($hostname) {
             Route::post('items/import/restaurant', 'Tenant\ItemController@importRestaurant');
             Route::post('items/catalog', 'Tenant\ItemController@catalog');
             Route::get('items/import/tables', 'Tenant\ItemController@tablesImport');
+
+            // New import preview endpoints
+            Route::post('items/import/validate', 'Tenant\ItemController@validateImport');
+            Route::post('items/import/process-batch', 'Tenant\ItemController@processImportBatch');
+            Route::delete('items/import/delete-batch', 'Tenant\ItemController@deleteImportBatch');
+            Route::get('items/import/preview', 'Tenant\ItemController@getImportPreview');
+
             Route::post('items/upload', 'Tenant\ItemController@upload');
             Route::post('items/visible_store', 'Tenant\ItemController@visibleStore');
             Route::post('items/duplicate', 'Tenant\ItemController@duplicate');

@@ -14,6 +14,8 @@ use App\Http\Resources\Tenant\ItemResource;
 use App\Imports\CatalogImport;
 use App\Imports\ItemsImport;
 use App\Imports\ItemsImportRestaurant;
+use App\Imports\ItemBulkValidator;
+use App\Models\Tenant\ItemImportTemp;
 use App\Models\Tenant\Catalogs\AffectationIgvType;
 use App\Models\Tenant\Catalogs\AttributeType;
 use App\Models\Tenant\Catalogs\CatColorsItem;
@@ -867,6 +869,377 @@ class ItemController extends Controller
             'success' => false,
             'message' =>  __('app.actions.upload.error'),
         ];
+    }
+
+    /**
+     * Validate import file and store in temporary table for preview
+     */
+    public function validateImport(Request $request)
+    {
+        $request->validate([
+            'warehouse_id' => 'required|numeric|min:1',
+            'file' => 'required|file|mimes:xlsx,xls'
+        ]);
+
+        try {
+            // Create validator instance
+            $validator = new ItemBulkValidator(
+                $request->warehouse_id,
+                auth()->id()
+            );
+
+            // Import and validate the file
+            \Excel::import($validator, $request->file('file'));
+
+            // Get statistics
+            $stats = $validator->getStats();
+
+            // Get preview data from temp table
+            $previewData = ItemImportTemp::where('batch_id', $stats['batch_id'])
+                ->orderBy('row_number')
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'row_number' => $item->row_number,
+                        'internal_id' => $item->row_data['internal_id'] ?? '',
+                        'description' => $item->row_data['description'] ?? '',
+                        'category' => $item->preview_data['category'] ?? '',
+                        'brand' => $item->preview_data['brand'] ?? '',
+                        'sale_price' => $item->row_data['sale_unit_price'] ?? 0,
+                        'stock' => $item->row_data['stock'] ?? 0,
+                        'action' => $item->action,
+                        'is_valid' => $item->is_valid,
+                        'errors' => $item->validation_errors ?? [],
+                        'preview' => $item->preview_data,
+                        'existing_price' => $item->preview_data['existing_price'] ?? null,
+                        'existing_stock' => $item->preview_data['existing_stock'] ?? null,
+                        'category_action' => $item->preview_data['category_action'] ?? null,
+                        'brand_action' => $item->preview_data['brand_action'] ?? null,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Archivo validado correctamente',
+                'data' => [
+                    'stats' => $stats,
+                    'preview' => $previewData,
+                    'batch_id' => $stats['batch_id']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error en validación de importación: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al validar el archivo: ' . $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * Process validated import batch
+     */
+    public function processImportBatch(Request $request)
+    {
+        $request->validate([
+            'batch_id' => 'required|string'
+        ]);
+
+        try {
+            $batchId = $request->batch_id;
+
+            // Get all valid pending records for this batch
+            $records = ItemImportTemp::where('batch_id', $batchId)
+                ->where('is_valid', true)
+                ->where('status', 'pending')
+                ->orderBy('row_number')
+                ->get();
+
+            if ($records->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay registros válidos para procesar'
+                ], 422);
+            }
+
+            $processed = 0;
+            $errors = [];
+
+            // Process each valid record
+            foreach ($records as $record) {
+                try {
+                    \DB::beginTransaction();
+
+                    $rowData = $record->row_data;
+
+                    // Process the item using the existing logic
+                    $item = $this->processImportRow($rowData, $record->warehouse_id);
+
+                    // Update the temp record
+                    $record->update([
+                        'status' => 'processed',
+                        'item_id' => $item->id
+                    ]);
+
+                    $processed++;
+
+                    \DB::commit();
+
+                } catch (\Exception $e) {
+                    \DB::rollback();
+
+                    $record->update([
+                        'status' => 'error',
+                        'process_error' => $e->getMessage()
+                    ]);
+
+                    $errors[] = [
+                        'row' => $record->row_number,
+                        'error' => $e->getMessage()
+                    ];
+                }
+            }
+
+            // Get final stats
+            $finalStats = ItemImportTemp::getBatchStats($batchId);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Se procesaron {$processed} items correctamente",
+                'data' => [
+                    'processed' => $processed,
+                    'errors' => $errors,
+                    'stats' => $finalStats
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error procesando batch de importación: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el batch: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete import batch (cancel import)
+     */
+    public function deleteImportBatch(Request $request)
+    {
+        $request->validate([
+            'batch_id' => 'required|string'
+        ]);
+
+        try {
+            $deleted = ItemImportTemp::deleteBatch($request->batch_id);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Importación cancelada correctamente',
+                'data' => [
+                    'deleted_records' => $deleted
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al cancelar la importación: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get import preview data
+     */
+    public function getImportPreview(Request $request)
+    {
+        $request->validate([
+            'batch_id' => 'required|string'
+        ]);
+
+        try {
+            $records = ItemImportTemp::where('batch_id', $request->batch_id)
+                ->orderBy('row_number')
+                ->get();
+
+            if ($records->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontró información del batch'
+                ], 404);
+            }
+
+            $stats = ItemImportTemp::getBatchStats($request->batch_id);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'records' => $records,
+                    'stats' => $stats
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al obtener la previsualización: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Process a single import row (extracted from ItemsImport logic)
+     */
+    protected function processImportRow($rowData, $warehouseId)
+    {
+        // Get or create category
+        $category = null;
+        if (!empty($rowData['category_name'])) {
+            $category = \Modules\Item\Models\Category::firstOrCreate([
+                'name' => $rowData['category_name']
+            ]);
+        }
+
+        // Get or create brand
+        $brand = null;
+        if (!empty($rowData['brand_name'])) {
+            $brand = \Modules\Item\Models\Brand::firstOrCreate([
+                'name' => $rowData['brand_name']
+            ]);
+        }
+
+        // Format date of due if present
+        $date_of_due = null;
+        if (!empty($rowData['date_of_due'])) {
+            $date_of_due = $rowData['date_of_due'];
+        }
+
+        // Check if item exists
+        $item = Item::where('internal_id', $rowData['internal_id'])->first();
+
+        if (!$item) {
+            // Create new item with stock (similar to ItemsImport)
+            $itemData = [
+                'description' => $rowData['description'],
+                'item_type_id' => '01',
+                'internal_id' => $rowData['internal_id'],
+                'model' => $rowData['model'] ?? null,
+                'item_code' => $rowData['item_code'] ?? null,
+                'unit_type_id' => $rowData['unit_type_id'],
+                'currency_type_id' => $rowData['currency_type_id'] ?? 'PEN',
+                'sale_unit_price' => $rowData['sale_unit_price'] ?? 0,
+                'sale_affectation_igv_type_id' => $rowData['sale_affectation_igv_type_id'] ?? '10',
+                'has_igv' => $this->determineHasIgv($rowData),
+                'purchase_unit_price' => $rowData['purchase_unit_price'] ?? 0,
+                'purchase_affectation_igv_type_id' => $rowData['purchase_affectation_igv_type_id'] ?? '10',
+                'stock' => $rowData['stock'] ?? 0,
+                'stock_min' => $rowData['stock_min'] ?? 0,
+                'category_id' => $category ? $category->id : null,
+                'brand_id' => $brand ? $brand->id : null,
+                'name' => $rowData['name'] ?? null,
+                'second_name' => $rowData['second_name'] ?? null,
+                'barcode' => $rowData['barcode'] ?? null,
+                'warehouse_id' => $warehouseId,
+            ];
+
+            // Add lot information if present
+            if (!empty($rowData['lot_code']) && !empty($date_of_due)) {
+                $itemData['lots_enabled'] = true;
+                $itemData['lot_code'] = $rowData['lot_code'];
+                $itemData['date_of_due'] = $date_of_due;
+            }
+
+            $item = Item::create($itemData);
+
+            // Create lot group if needed
+            if (!empty($rowData['lot_code']) && !empty($date_of_due)) {
+                $item->lots_group()->create([
+                    'code' => $rowData['lot_code'],
+                    'quantity' => $rowData['stock'] ?? 0,
+                    'date_of_due' => $date_of_due,
+                ]);
+            }
+
+        } else {
+            // Update existing item
+            $item->update([
+                'description' => $rowData['description'],
+                'model' => $rowData['model'] ?? $item->model,
+                'item_code' => $rowData['item_code'] ?? $item->item_code,
+                'unit_type_id' => $rowData['unit_type_id'],
+                'currency_type_id' => $rowData['currency_type_id'] ?? $item->currency_type_id,
+                'sale_unit_price' => $rowData['sale_unit_price'] ?? $item->sale_unit_price,
+                'sale_affectation_igv_type_id' => $rowData['sale_affectation_igv_type_id'] ?? $item->sale_affectation_igv_type_id,
+                'has_igv' => $this->determineHasIgv($rowData),
+                'purchase_unit_price' => $rowData['purchase_unit_price'] ?? $item->purchase_unit_price,
+                'purchase_affectation_igv_type_id' => $rowData['purchase_affectation_igv_type_id'] ?? $item->purchase_affectation_igv_type_id,
+                'stock_min' => $rowData['stock_min'] ?? $item->stock_min,
+                'category_id' => $category ? $category->id : $item->category_id,
+                'brand_id' => $brand ? $brand->id : $item->brand_id,
+                'name' => $rowData['name'] ?? $item->name,
+                'second_name' => $rowData['second_name'] ?? $item->second_name,
+                'barcode' => $rowData['barcode'] ?? $item->barcode,
+            ]);
+
+            // Handle stock update for existing items using inventory transactions
+            if (isset($rowData['stock'])) {
+                $inventory_transaction = \Modules\Inventory\Models\InventoryTransaction::where('id', '102')->first();
+
+                if ($inventory_transaction) {
+                    $warehouse = Warehouse::find($warehouseId);
+
+                    // Create inventory record
+                    \Modules\Inventory\Models\Inventory::create([
+                        'type' => 1,
+                        'description' => 'Stock inicial',
+                        'item_id' => $item->id,
+                        'warehouse_id' => $warehouseId,
+                        'quantity' => $rowData['stock'],
+                        'inventory_transaction_id' => $inventory_transaction->id,
+                        'lot_code' => $rowData['lot_code'] ?? null,
+                        'date_of_due' => $date_of_due,
+                    ]);
+                }
+            }
+
+            // Create or update lot information if provided
+            if (!empty($rowData['lot_code']) && !empty($date_of_due)) {
+                $item->lots_group()->updateOrCreate(
+                    ['code' => $rowData['lot_code']],
+                    [
+                        'quantity' => $rowData['stock'] ?? 0,
+                        'date_of_due' => $date_of_due,
+                    ]
+                );
+            }
+        }
+
+        return $item;
+    }
+
+    /**
+     * Determine if item has IGV based on affectation type
+     */
+    protected function determineHasIgv($rowData)
+    {
+        $affectation_igv_types_exonerated_unaffected = ['20','21','30','31','32','33','34','35','36','37'];
+
+        if (isset($rowData['sale_affectation_igv_type_id'])) {
+            if (in_array($rowData['sale_affectation_igv_type_id'], $affectation_igv_types_exonerated_unaffected)) {
+                return true;
+            }
+        }
+
+        if (isset($rowData['has_igv'])) {
+            return $rowData['has_igv'];
+        }
+
+        return false;
     }
 
     public function catalog(Request $request)
