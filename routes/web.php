@@ -204,12 +204,16 @@ if ($hostname) {
             Route::post('items', 'Tenant\ItemController@store');
             Route::delete('items/{item}', 'Tenant\ItemController@destroy');
             Route::delete('items/item-unit-type/{item}', 'Tenant\ItemController@destroyItemUnitType');
+
+            // DEPRECADO - Sistema antiguo de importación sin previsualización (no usar)
+            // @deprecated desde 2025-12-05 - No implementa correctamente ItemWarehousePrice
             Route::post('items/import', 'Tenant\ItemController@import');
+
             Route::post('items/import/restaurant', 'Tenant\ItemController@importRestaurant');
             Route::post('items/catalog', 'Tenant\ItemController@catalog');
             Route::get('items/import/tables', 'Tenant\ItemController@tablesImport');
 
-            // New import preview endpoints
+            // Sistema de importación con previsualización (USAR ESTE)
             Route::post('items/import/validate', 'Tenant\ItemController@validateImport');
             Route::post('items/import/process-batch', 'Tenant\ItemController@processImportBatch');
             Route::delete('items/import/delete-batch', 'Tenant\ItemController@deleteImportBatch');

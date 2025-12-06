@@ -1798,6 +1798,43 @@ class Item extends ModelTenant
     }
 
     /**
+     * Obtener el precio del item según el almacén
+     * Si existe un precio específico para el almacén, lo retorna
+     * Si no existe, retorna el precio global (sale_unit_price)
+     *
+     * @param int $warehouse_id
+     * @return float
+     */
+    public function getPriceByWarehouse($warehouse_id)
+    {
+        // Buscar precio específico del almacén
+        $warehousePrice = $this->warehousePrices()
+            ->where('warehouse_id', $warehouse_id)
+            ->first();
+
+        // Si existe precio específico, retornarlo
+        if ($warehousePrice) {
+            return (float) $warehousePrice->price;
+        }
+
+        // Si no existe precio específico, retornar precio global
+        return (float) $this->sale_unit_price;
+    }
+
+    /**
+     * Verificar si el item tiene precio específico para un almacén
+     *
+     * @param int $warehouse_id
+     * @return bool
+     */
+    public function hasWarehousePrice($warehouse_id)
+    {
+        return $this->warehousePrices()
+            ->where('warehouse_id', $warehouse_id)
+            ->exists();
+    }
+
+    /**
      * Deuelve codificacion 64 para el codigo de barras
      *
      * @param int   $height

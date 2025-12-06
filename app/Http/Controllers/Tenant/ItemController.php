@@ -815,31 +815,32 @@ class ItemController extends Controller
     }
 
 
+    /**
+     * MÉTODO DEPRECADO - NO USAR
+     *
+     * @deprecated Este método está deprecado desde 2025-12-05
+     * @see validateImport() Use el nuevo sistema con previsualización
+     * @see processImportBatch() Use el nuevo sistema con previsualización
+     *
+     * Este método antiguo NO implementa correctamente:
+     * - Precios diferenciados por almacén (ItemWarehousePrice)
+     * - Sistema de previsualización
+     * - Validación de datos antes de importar
+     *
+     * Por favor use el nuevo sistema:
+     * 1. POST /items/import/validate - Validar y previsualizar
+     * 2. POST /items/import/process-batch - Procesar importación
+     */
     public function import(Request $request)
     {
-        $request->validate([
-            'warehouse_id' => 'required|numeric|min:1'
-        ]);
-        if ($request->hasFile('file')) {
-            try {
-                $import = new ItemsImport();
-                $import->import($request->file('file'), null, Excel::XLSX);
-                $data = $import->getData();
-                return [
-                    'success' => true,
-                    'message' =>  __('app.actions.upload.success'),
-                    'data' => $data
-                ];
-            } catch (Exception $e) {
-                return [
-                    'success' => false,
-                    'message' =>  $e->getMessage()
-                ];
-            }
-        }
         return [
             'success' => false,
-            'message' =>  __('app.actions.upload.error'),
+            'message' => 'Este método de importación está deprecado. Por favor use el sistema de importación con previsualización desde la interfaz de usuario.',
+            'deprecated' => true,
+            'new_endpoints' => [
+                'validate' => '/items/import/validate',
+                'process' => '/items/import/process-batch'
+            ]
         ];
     }
 
@@ -1165,15 +1166,23 @@ class ItemController extends Controller
                 ]);
             }
 
+            // Create warehouse-specific price for new item
+            ItemWarehousePrice::updateOrCreate([
+                'item_id' => $item->id,
+                'warehouse_id' => $warehouseId,
+            ], [
+                'price' => $rowData['sale_unit_price'] ?? 0,
+            ]);
+
         } else {
-            // Update existing item
+            // Update existing item (without modifying global price)
             $item->update([
                 'description' => $rowData['description'],
                 'model' => $rowData['model'] ?? $item->model,
                 'item_code' => $rowData['item_code'] ?? $item->item_code,
                 'unit_type_id' => $rowData['unit_type_id'],
                 'currency_type_id' => $rowData['currency_type_id'] ?? $item->currency_type_id,
-                'sale_unit_price' => $rowData['sale_unit_price'] ?? $item->sale_unit_price,
+                // DO NOT update sale_unit_price to keep global price intact
                 'sale_affectation_igv_type_id' => $rowData['sale_affectation_igv_type_id'] ?? $item->sale_affectation_igv_type_id,
                 'has_igv' => $this->determineHasIgv($rowData),
                 'purchase_unit_price' => $rowData['purchase_unit_price'] ?? $item->purchase_unit_price,
@@ -1187,7 +1196,8 @@ class ItemController extends Controller
             ]);
 
             // Handle stock update for existing items using inventory transactions
-            if (isset($rowData['stock'])) {
+            // Only create inventory transaction if stock > 0
+            if (isset($rowData['stock']) && $rowData['stock'] > 0) {
                 $inventory_transaction = \Modules\Inventory\Models\InventoryTransaction::where('id', '102')->first();
 
                 if ($inventory_transaction) {
@@ -1207,16 +1217,24 @@ class ItemController extends Controller
                 }
             }
 
-            // Create or update lot information if provided
-            if (!empty($rowData['lot_code']) && !empty($date_of_due)) {
+            // Create or update lot information if provided (only if stock > 0)
+            if (!empty($rowData['lot_code']) && !empty($date_of_due) && isset($rowData['stock']) && $rowData['stock'] > 0) {
                 $item->lots_group()->updateOrCreate(
                     ['code' => $rowData['lot_code']],
                     [
-                        'quantity' => $rowData['stock'] ?? 0,
+                        'quantity' => $rowData['stock'],
                         'date_of_due' => $date_of_due,
                     ]
                 );
             }
+
+            // Always update warehouse-specific price for existing item
+            ItemWarehousePrice::updateOrCreate([
+                'item_id' => $item->id,
+                'warehouse_id' => $warehouseId,
+            ], [
+                'price' => $rowData['sale_unit_price'] ?? 0,
+            ]);
         }
 
         return $item;

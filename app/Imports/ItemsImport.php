@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Tenant\Item;
 use App\Models\Tenant\Warehouse;
+use App\Models\Tenant\ItemWarehousePrice;
 use Illuminate\Support\Str;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -18,7 +19,23 @@ use Exception;
 use Modules\Item\Models\ItemLotsGroup;
 use Modules\Finance\Helpers\UploadFileHelper;
 
-
+/**
+ * CLASE DEPRECADA - Sistema antiguo de importación
+ *
+ * @deprecated desde 2025-12-05
+ *
+ * Esta clase ya no se usa en el sistema de importación principal.
+ * El nuevo sistema con previsualización usa ItemController::processImportRow()
+ *
+ * NOTA: Se mantiene esta clase actualizada con los cambios de ItemWarehousePrice
+ * por compatibilidad en caso de que algún proceso externo la use directamente,
+ * pero el sistema web usa el nuevo flujo de previsualización.
+ *
+ * Nuevo flujo recomendado:
+ * 1. ItemController::validateImport() - Validar archivo
+ * 2. ItemController::processImportBatch() - Procesar importación
+ * 3. ItemController::processImportRow() - Procesar cada fila
+ */
 class ItemsImport implements ToCollection
 {
     use Importable;
@@ -182,9 +199,17 @@ class ItemsImport implements ToCollection
                             'date_of_due'  => $_date_of_due,
                         ]);
 
+                        // Crear precio específico para el almacén
+                        ItemWarehousePrice::updateOrCreate([
+                            'item_id' => $new_item->id,
+                            'warehouse_id' => $warehouse_id,
+                        ], [
+                            'price' => $sale_unit_price,
+                        ]);
+
                     }else{
 
-                        Item::create([
+                        $created_item = Item::create([
                             'description' => $description,
                             'model' => $model,
                             'item_type_id' => $item_type_id,
@@ -210,6 +235,14 @@ class ItemsImport implements ToCollection
                             'image_small' => $file_name_small,
                         ]);
 
+                        // Crear precio específico para el almacén
+                        ItemWarehousePrice::updateOrCreate([
+                            'item_id' => $created_item->id,
+                            'warehouse_id' => $warehouse_id,
+                        ], [
+                            'price' => $sale_unit_price,
+                        ]);
+
                     }
 
 
@@ -217,12 +250,9 @@ class ItemsImport implements ToCollection
 
                 }else{
 
-                    $inventory_transaction = InventoryTransaction::findOrFail('102');
                     $stock = $row[11];
-                    if (!$stock) {
-                        throw new Exception("Debe ingresar el stock", 500);
-                    }
 
+                    // Actualizar datos del item (sin modificar el precio global)
                     $item->update([
                         'description' => $description,
                         'model' => $model,
@@ -231,7 +261,7 @@ class ItemsImport implements ToCollection
                         'item_code' => $item_code,
                         'unit_type_id' => $unit_type_id,
                         'currency_type_id' => $currency_type_id,
-                        'sale_unit_price' => $sale_unit_price,
+                        // NO actualizamos sale_unit_price para mantener precio global intacto
                         'sale_affectation_igv_type_id' => $sale_affectation_igv_type_id,
                         'has_igv' => $has_igv,
                         'purchase_unit_price' => $purchase_unit_price,
@@ -242,20 +272,33 @@ class ItemsImport implements ToCollection
                         'barcode' => $barcode,
                     ]);
 
+                    // Siempre actualizar precio específico del almacén
+                    ItemWarehousePrice::updateOrCreate([
+                        'item_id' => $item->id,
+                        'warehouse_id' => $warehouse_id,
+                    ], [
+                        'price' => $sale_unit_price,
+                    ]);
 
-                    $inventory = new Inventory();
-                    $inventory->type = null;
-                    $inventory->description = $inventory_transaction->name;
-                    $inventory->item_id = $item->id;
-                    $inventory->warehouse_id = $warehouse_id;
-                    $inventory->quantity = $stock;
-                    $inventory->inventory_transaction_id = $inventory_transaction->id;
-                    $inventory->lot_code = $lot_code;
-                    $inventory->save();
+                    // Solo crear transacción de inventario si hay stock mayor a 0
+                    if ($stock && $stock > 0) {
+                        $inventory_transaction = InventoryTransaction::findOrFail('102');
+
+                        $inventory = new Inventory();
+                        $inventory->type = null;
+                        $inventory->description = $inventory_transaction->name;
+                        $inventory->item_id = $item->id;
+                        $inventory->warehouse_id = $warehouse_id;
+                        $inventory->quantity = $stock;
+                        $inventory->inventory_transaction_id = $inventory_transaction->id;
+                        $inventory->lot_code = $lot_code;
+                        $inventory->save();
+                    }
 
 
+                    // Solo procesar lotes si hay stock mayor a 0
                     $lot_code = $row[17];
-                    if($lot_code){
+                    if($lot_code && $stock && $stock > 0){
 
                         $date_of_due = $row[18];
                         if(!$date_of_due) {
