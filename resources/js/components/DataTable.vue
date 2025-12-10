@@ -51,6 +51,22 @@
                             >
                             </el-date-picker>
                         </template>
+                        <template v-else-if="search.column === 'warehouse'">
+                            <el-select
+                                v-model="search.value"
+                                placeholder="Seleccione almacén"
+                                style="width: 100%;"
+                                clearable
+                                @change="getRecords"
+                            >
+                                <el-option
+                                    v-for="warehouse in warehouses"
+                                    :key="warehouse.id"
+                                    :value="warehouse.description"
+                                    :label="warehouse.description"
+                                ></el-option>
+                            </el-select>
+                        </template>
                         <template v-else>
                             <el-input
                                 placeholder="Buscar"
@@ -174,6 +190,7 @@ export default {
                 visible:'Visibles',
                 hidden:'Ocultos'
             },
+            warehouses: [],
         };
     },
     created() {
@@ -199,6 +216,19 @@ export default {
                 this.columns = response.data;
                 this.search.column = _.head(Object.keys(this.columns));
             });
+
+        // Cargar almacenes si el recurso es inventory
+        if (this.resource === 'inventory') {
+            await this.$http
+                .get('/inventory/tables')
+                .then(response => {
+                    this.warehouses = response.data.warehouses;
+                })
+                .catch(error => {
+                    console.error('Error loading warehouses:', error);
+                });
+        }
+
         await this.getRecords();
     },
     methods: {
