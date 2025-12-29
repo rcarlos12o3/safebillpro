@@ -357,6 +357,8 @@ if ($hostname) {
             Route::get('summaries/regularize/{summary}', 'Tenant\SummaryController@regularize');
             Route::get('summaries/cancel-regularize/{summary}', 'Tenant\SummaryController@cancelRegularize');
             Route::get('summaries/tables', 'Tenant\SummaryController@tables');
+            Route::post('summaries/days-with-documents', 'Tenant\SummaryController@getDaysWithDocuments');
+            Route::post('summaries/store-massive', 'Tenant\SummaryController@storeMassive');
 
             //Voided
             Route::get('voided', 'Tenant\VoidedController@index')->name('tenant.voided.index')->middleware('redirect.level', 'tenant.internal.mode');

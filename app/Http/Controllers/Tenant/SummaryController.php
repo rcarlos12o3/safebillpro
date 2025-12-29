@@ -23,6 +23,8 @@ use App\Models\Tenant\{
 };
 use Exception;
 use App\Models\Tenant\Catalogs\SummaryStatusType;
+use App\CoreFacturalo\Requests\Web\Validation\SummaryValidation;
+use App\CoreFacturalo\Requests\Inputs\SummaryInput;
 
 
 class SummaryController extends Controller
@@ -207,6 +209,102 @@ class SummaryController extends Controller
         ];
 
     }
-    
+
+
+    /**
+     * Obtener días con documentos pendientes en un rango de fechas
+     */
+    public function getDaysWithDocuments(Request $request)
+    {
+        $request->validate([
+            'date_start' => 'required|date',
+            'date_end' => 'required|date|after_or_equal:date_start',
+        ]);
+
+        $company = Company::active();
+        $dateStart = $request->input('date_start');
+        $dateEnd = $request->input('date_end');
+
+        $days = Document::select('date_of_issue', DB::raw('COUNT(*) as total'))
+            ->where('soap_type_id', $company->soap_type_id)
+            ->where('group_id', '02')
+            ->where('state_type_id', '01')
+            ->where('ticket_single_shipment', false)
+            ->whereBetween('date_of_issue', [$dateStart, $dateEnd])
+            ->groupBy('date_of_issue')
+            ->orderBy('date_of_issue', 'asc')
+            ->get();
+
+        return [
+            'success' => true,
+            'data' => $days,
+            'total_days' => $days->count(),
+            'total_documents' => $days->sum('total')
+        ];
+    }
+
+
+    /**
+     * Envío masivo de resúmenes por rango de fechas
+     */
+    public function storeMassive(Request $request)
+    {
+        $request->validate([
+            'date_of_reference' => 'required|date',
+            'summary_status_type_id' => 'required',
+        ]);
+
+        $company = Company::active();
+        $dateOfReference = $request->input('date_of_reference');
+        $summaryStatusTypeId = $request->input('summary_status_type_id');
+
+        // Buscar documentos para esta fecha
+        $documents = Document::filterDocumentsForSummary($dateOfReference, $company->soap_type_id)->get();
+
+        if ($documents->isEmpty()) {
+            return [
+                'success' => false,
+                'message' => "No hay documentos pendientes para {$dateOfReference}",
+                'date' => $dateOfReference
+            ];
+        }
+
+        try {
+            // Preparar los datos para el resumen
+            $inputs = [
+                'date_of_reference' => $dateOfReference,
+                'summary_status_type_id' => $summaryStatusTypeId,
+                'documents' => $documents->map(function($doc) {
+                    return ['id' => $doc->id];
+                })->toArray()
+            ];
+
+            // Procesar los inputs igual que el middleware input.request:summary,web
+            $inputs = SummaryValidation::validation($inputs);
+            $inputs = SummaryInput::set($inputs, 'web');
+
+            // Reemplazar el request con los inputs procesados
+            $request->replace($inputs);
+
+            $result = $this->save($request);
+
+            return [
+                'success' => $result['success'] ?? false,
+                'message' => $result['message'] ?? 'Resumen procesado',
+                'date' => $dateOfReference,
+                'documents_count' => $documents->count(),
+                'data' => $result['data'] ?? null
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'date' => $dateOfReference,
+                'documents_count' => $documents->count()
+            ];
+        }
+    }
+
 
 }

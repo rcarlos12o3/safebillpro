@@ -710,7 +710,7 @@ class Document extends ModelTenant
      */
     public function getDownloadExternalPdfAttribute()
     {
-        return route('tenant.download.external_id', ['model' => 'document', 'type' => 'pdf', 'external_id' => $this->external_id]);
+        return url("/print/document/{$this->external_id}/a4");
     }
 
     /**

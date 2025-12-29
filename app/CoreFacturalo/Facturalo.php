@@ -1036,7 +1036,8 @@ class Facturalo
             'response_regularize_shipping' => [
                 'code' => $code,
                 'description' => $description
-            ]
+            ],
+            'is_editable' => true
         ]);
 
     }
