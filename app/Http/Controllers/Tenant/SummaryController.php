@@ -229,7 +229,6 @@ class SummaryController extends Controller
             ->where('soap_type_id', $company->soap_type_id)
             ->where('group_id', '02')
             ->where('state_type_id', '01')
-            ->where('ticket_single_shipment', false)
             ->whereBetween('date_of_issue', [$dateStart, $dateEnd])
             ->groupBy('date_of_issue')
             ->orderBy('date_of_issue', 'asc')
