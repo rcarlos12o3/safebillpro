@@ -301,8 +301,8 @@
                 }
             }
 
-            $unit_gain = $sale_unit_price - $purchase_unit_price;
-            $overall_profit = $unit_gain * $quantity;
+            $unit_gain = round($sale_unit_price - $purchase_unit_price, 2);
+            $overall_profit = round($unit_gain * $quantity, 2);
 
             return (object)[
                 'quantity' => $quantity,

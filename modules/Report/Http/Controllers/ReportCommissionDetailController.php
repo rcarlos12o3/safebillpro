@@ -64,6 +64,7 @@ class ReportCommissionDetailController extends Controller
         $month_end = $request['month_end'];
         $item_id = $request['item_id'];
         $category_id = $request['category_id'] ?? null;
+        $customer_id = $request['customer_id'] ?? null;
 
 
         $d_start = null;
@@ -94,25 +95,29 @@ class ReportCommissionDetailController extends Controller
                 break;
         }
 
-        $records = $this->data($establishment_id, $d_start, $d_end, $model, $item_id, $category_id);
+        $records = $this->data($establishment_id, $d_start, $d_end, $model, $item_id, $category_id, $customer_id);
 
         return $records;
 
     }
 
     
-    private function data($establishment_id, $date_start, $date_end, $model, $item_id, $category_id)
+    private function data($establishment_id, $date_start, $date_end, $model, $item_id, $category_id, $customer_id = null)
     {
 
         if($model == 'App\Models\Tenant\DocumentItem') {
 
             if($establishment_id){
 
-                    $data = $model::whereHas('document',function($query) use($date_start, $date_end, $establishment_id){
+                    $data = $model::whereHas('document',function($query) use($date_start, $date_end, $establishment_id, $customer_id){
                         $query->whereBetween('date_of_issue', [$date_start, $date_end])
                         ->whereIn('document_type_id', ['01','03'])
                         ->where('establishment_id', $establishment_id)
                         ->whereStateTypeAccepted();
+
+                        if($customer_id) {
+                            $query->where('customer_id', $customer_id);
+                        }
                     });
 
 
@@ -120,10 +125,14 @@ class ReportCommissionDetailController extends Controller
 
 
 
-                $data = $model::whereHas('document',function($query) use($date_start, $date_end){
+                $data = $model::whereHas('document',function($query) use($date_start, $date_end, $customer_id){
                             $query->whereBetween('date_of_issue', [$date_start, $date_end])
                             ->whereIn('document_type_id', ['01','03'])
                             ->whereStateTypeAccepted();
+
+                            if($customer_id) {
+                                $query->where('customer_id', $customer_id);
+                            }
                         });
             }
 
@@ -133,7 +142,7 @@ class ReportCommissionDetailController extends Controller
 
 
             $this->filterByCategory($data, $category_id);
-    
+
             return $data;
 
 
@@ -142,19 +151,27 @@ class ReportCommissionDetailController extends Controller
 
             if($establishment_id){
 
-                $data = $model::whereHas('sale_note',function($query) use($date_start, $date_end, $establishment_id){
+                $data = $model::whereHas('sale_note',function($query) use($date_start, $date_end, $establishment_id, $customer_id){
                     $query->whereBetween('date_of_issue', [$date_start, $date_end])
                         ->where('establishment_id', $establishment_id)
                         ->whereStateTypeAccepted()
                         ->whereNotChanged();
+
+                        if($customer_id) {
+                            $query->where('customer_id', $customer_id);
+                        }
                     });
 
             }else{
 
-                    $data = $model::whereHas('sale_note',function($query) use($date_start, $date_end){
+                    $data = $model::whereHas('sale_note',function($query) use($date_start, $date_end, $customer_id){
                                 $query->whereBetween('date_of_issue', [$date_start, $date_end])
                                     ->whereStateTypeAccepted()
                                     ->whereNotChanged();
+
+                                    if($customer_id) {
+                                        $query->where('customer_id', $customer_id);
+                                    }
                                 });
 
             }
@@ -165,7 +182,7 @@ class ReportCommissionDetailController extends Controller
 
 
             $this->filterByCategory($data, $category_id);
-    
+
             return $data;
 
         }

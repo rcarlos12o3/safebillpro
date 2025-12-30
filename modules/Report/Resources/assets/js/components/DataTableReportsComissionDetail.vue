@@ -95,14 +95,14 @@
                         </div>
                     </div>
 
-                    <div v-if="resource == 'reports/sales' || resource == 'reports/purchases'|| resource == 'reports/fixed-asset-purchases'"
+                    <div v-if="resource == 'reports/sales' || resource == 'reports/purchases' || resource == 'reports/fixed-asset-purchases' || resource == 'reports/commissions-detail'"
                          class="col-lg-5 col-md-5">
                         <div class="form-group">
                             <label class="control-label">
-                                {{ (resource == 'reports/sales') ? 'Clientes' : 'Proveedores' }}
+                                {{ (resource == 'reports/sales' || resource == 'reports/commissions-detail') ? 'Clientes' : 'Proveedores' }}
                             </label>
 
-                            <el-select v-model="form.person_id"
+                            <el-select v-model="form.customer_id"
                                        :loading="loading_search"
                                        :remote-method="searchRemotePersons"
                                        clearable
@@ -385,7 +385,7 @@ export default {
 
         await this.filterPersons()
         // await this.getTotals()
-        this.form.type_person = this.resource === 'reports/sales' ? 'customers' : 'suppliers'
+        this.form.type_person = (this.resource === 'reports/sales' || this.resource === 'reports/commissions-detail') ? 'customers' : 'suppliers'
 
     },
     methods: {
@@ -410,7 +410,7 @@ export default {
                 this.loading_search = true
                 let parameters = `input=${input}`
 
-                this.form.type_person = this.resource === 'reports/sales' ? 'customers' : 'suppliers'
+                this.form.type_person = (this.resource === 'reports/sales' || this.resource === 'reports/commissions-detail') ? 'customers' : 'suppliers'
 
 
                 this.$http.get(`/reports/data-table/persons/${this.form.type_person}?${parameters}`)
@@ -453,6 +453,7 @@ export default {
             this.form = {
                 establishment_id: null,
                 person_id: null,
+                customer_id: null,
                 type_person: null,
                 document_type_id: null,
                 period: 'month',
