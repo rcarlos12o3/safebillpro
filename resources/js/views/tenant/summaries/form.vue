@@ -1,5 +1,5 @@
 <template>
-    <el-dialog :title="titleDialog" width="80%" :visible="showDialog" @close="close" @open="create">
+    <el-dialog :title="titleDialog" width="80%" :visible="showDialog" :close-on-click-modal="false" @close="close" @open="create">
         <form autocomplete="off" @submit.prevent="submit">
             <div class="form-body">
                 <!-- Toggle modo individual/masivo -->
@@ -240,14 +240,22 @@
                                                 <td class="text-center">
                                                     <span v-if="day.status === 'pending'" class="badge badge-secondary">Pendiente</span>
                                                     <span v-else-if="day.status === 'processing'" class="badge badge-warning">
-                                                        <i class="fas fa-spinner fa-spin"></i> Procesando
+                                                        <i class="fas fa-spinner fa-spin"></i> Enviando
                                                     </span>
-                                                    <span v-else-if="day.status === 'success'" class="badge badge-success">Enviado</span>
-                                                    <span v-else-if="day.status === 'error'" class="badge badge-danger">Error</span>
-                                                    <span v-else-if="day.status === 'skipped'" class="badge badge-info">Sin docs</span>
+                                                    <span v-else-if="day.status === 'sent'" class="badge badge-primary">Enviado</span>
+                                                    <span v-else-if="day.status === 'querying'" class="badge badge-info">
+                                                        <i class="fas fa-spinner fa-spin"></i> Consultando
+                                                    </span>
+                                                    <span v-else-if="day.status === 'accepted'" class="badge badge-success">Aceptado</span>
+                                                    <span v-else-if="day.status === 'rejected'" class="badge badge-danger">Rechazado</span>
+                                                    <span v-else-if="day.status === 'query_error'" class="badge badge-warning">Error consulta</span>
+                                                    <span v-else-if="day.status === 'error'" class="badge badge-danger">Error envío</span>
+                                                    <span v-else-if="day.status === 'skipped'" class="badge badge-secondary">Sin docs</span>
                                                 </td>
                                                 <td class="text-center">
                                                     <small>{{ day.message || '-' }}</small>
+                                                    <br v-if="day.identifier">
+                                                    <small v-if="day.identifier" class="text-muted">{{ day.identifier }}</small>
                                                 </td>
                                             </tr>
                                         </tbody>
@@ -260,13 +268,15 @@
                         <div class="row mt-3" v-if="massive.finished">
                             <div class="col-md-12">
                                 <div class="alert" :class="{
-                                    'alert-success': massive.errors_count === 0,
-                                    'alert-warning': massive.errors_count > 0
+                                    'alert-success': massive.errors_count === 0 && massive.rejected_count === 0 && massive.query_errors_count === 0,
+                                    'alert-warning': massive.errors_count > 0 || massive.rejected_count > 0 || massive.query_errors_count > 0
                                 }">
                                     <strong>Proceso finalizado:</strong>
-                                    {{ massive.success_count }} exitosos,
-                                    {{ massive.errors_count }} con error,
-                                    {{ massive.skipped_count }} sin documentos
+                                    <span class="text-success">{{ massive.accepted_count }} aceptados</span>,
+                                    <span class="text-danger" v-if="massive.rejected_count > 0">{{ massive.rejected_count }} rechazados,</span>
+                                    <span class="text-warning" v-if="massive.query_errors_count > 0">{{ massive.query_errors_count }} error consulta,</span>
+                                    <span class="text-danger" v-if="massive.errors_count > 0">{{ massive.errors_count }} error envío,</span>
+                                    <span class="text-muted">{{ massive.skipped_count }} sin documentos</span>
                                 </div>
                             </div>
                         </div>
@@ -300,13 +310,22 @@
                     {{ massive.processing ? 'Procesando...' : 'Procesar todos los días' }}
                 </el-button>
 
-                <!-- Botón reintentar errores -->
+                <!-- Botón reintentar errores de envío -->
                 <el-button
                     v-if="mode === 'massive' && massive.finished && massive.errors_count > 0"
-                    type="warning"
+                    type="danger"
                     @click.prevent="retryErrors"
                 >
-                    Reintentar errores ({{ massive.errors_count }})
+                    Reintentar envíos ({{ massive.errors_count }})
+                </el-button>
+
+                <!-- Botón reintentar consultas fallidas -->
+                <el-button
+                    v-if="mode === 'massive' && massive.finished && massive.query_errors_count > 0"
+                    type="warning"
+                    @click.prevent="retryQueries"
+                >
+                    Reintentar consultas ({{ massive.query_errors_count }})
                 </el-button>
             </div>
         </form>
@@ -364,7 +383,10 @@
                     finished: false,
                     success_count: 0,
                     errors_count: 0,
-                    skipped_count: 0
+                    skipped_count: 0,
+                    accepted_count: 0,
+                    rejected_count: 0,
+                    query_errors_count: 0
                 }
             }
         },
@@ -411,7 +433,10 @@
                     finished: false,
                     success_count: 0,
                     errors_count: 0,
-                    skipped_count: 0
+                    skipped_count: 0,
+                    accepted_count: 0,
+                    rejected_count: 0,
+                    query_errors_count: 0
                 }
             },
             changeMode() {
@@ -505,7 +530,9 @@
                         this.massive.days = response.data.data.map(day => ({
                             ...day,
                             status: 'pending',
-                            message: null
+                            message: null,
+                            summary_id: null,
+                            identifier: null
                         }))
                         this.massive.total_days = response.data.total_days
                         this.massive.total_documents = response.data.total_documents
@@ -536,9 +563,14 @@
                 this.massive.success_count = 0
                 this.massive.errors_count = 0
                 this.massive.skipped_count = 0
+                this.massive.accepted_count = 0
+                this.massive.rejected_count = 0
+                this.massive.query_errors_count = 0
                 this.massive.progress_percentage = 0
 
-                const daysToProcess = this.massive.days.filter(d => d.status === 'pending' || d.status === 'error')
+                const daysToProcess = this.massive.days.filter(d =>
+                    d.status === 'pending' || d.status === 'error' || d.status === 'query_error'
+                )
 
                 for (let i = 0; i < daysToProcess.length; i++) {
                     const day = daysToProcess[i]
@@ -546,7 +578,7 @@
 
                     this.massive.current_date = day.date_of_issue
                     this.massive.days[dayIndex].status = 'processing'
-                    this.massive.days[dayIndex].message = null
+                    this.massive.days[dayIndex].message = 'Enviando...'
 
                     try {
                         const response = await this.$http.post(`/${this.resource}/store-massive`, {
@@ -555,9 +587,17 @@
                         })
 
                         if (response.data.success) {
-                            this.massive.days[dayIndex].status = 'success'
-                            this.massive.days[dayIndex].message = response.data.message || 'Enviado correctamente'
+                            this.massive.days[dayIndex].status = 'sent'
+                            this.massive.days[dayIndex].message = 'Enviado, consultando estado...'
+                            this.massive.days[dayIndex].summary_id = response.data.summary_id
+                            this.massive.days[dayIndex].identifier = response.data.identifier
                             this.massive.success_count++
+
+                            // Esperar antes de consultar (SUNAT necesita tiempo para procesar)
+                            await this.sleep(3000)
+
+                            // Consultar estado del resumen
+                            await this.queryDayStatus(dayIndex)
                         } else {
                             if (response.data.message && response.data.message.includes('No hay documentos')) {
                                 this.massive.days[dayIndex].status = 'skipped'
@@ -590,26 +630,89 @@
 
                 this.massive.processing = false
                 this.massive.finished = true
-                this.massive.progress_status = this.massive.errors_count === 0 ? 'success' : 'warning'
+                this.massive.progress_status = (this.massive.errors_count === 0 && this.massive.rejected_count === 0) ? 'success' : 'warning'
                 this.$eventHub.$emit('reloadData')
 
-                if (this.massive.errors_count === 0) {
-                    this.$message.success('Todos los resúmenes fueron enviados correctamente')
+                const totalErrors = this.massive.errors_count + this.massive.rejected_count + this.massive.query_errors_count
+                if (totalErrors === 0) {
+                    this.$message.success('Todos los resúmenes fueron aceptados correctamente')
                 } else {
-                    this.$message.warning(`Proceso completado con ${this.massive.errors_count} error(es)`)
+                    this.$message.warning(`Proceso completado con ${totalErrors} error(es)`)
+                }
+            },
+
+            async queryDayStatus(dayIndex) {
+                const day = this.massive.days[dayIndex]
+                if (!day.summary_id) return
+
+                this.massive.days[dayIndex].status = 'querying'
+                this.massive.days[dayIndex].message = 'Consultando estado en SUNAT...'
+
+                try {
+                    const response = await this.$http.get(`/${this.resource}/status/${day.summary_id}`)
+
+                    if (response.data.success) {
+                        this.massive.days[dayIndex].status = 'accepted'
+                        this.massive.days[dayIndex].message = response.data.message || 'Aceptado por SUNAT'
+                        this.massive.accepted_count++
+                        // Restar del contador de enviados ya que ahora está aceptado
+                        this.massive.success_count--
+                    } else {
+                        this.massive.days[dayIndex].status = 'rejected'
+                        this.massive.days[dayIndex].message = response.data.message || 'Rechazado por SUNAT'
+                        this.massive.rejected_count++
+                        // Restar del contador de enviados
+                        this.massive.success_count--
+                    }
+                } catch (error) {
+                    this.massive.days[dayIndex].status = 'query_error'
+                    let errorMsg = 'Error al consultar estado'
+                    if (error.response && error.response.data && error.response.data.message) {
+                        errorMsg = error.response.data.message
+                    }
+                    this.massive.days[dayIndex].message = errorMsg
+                    this.massive.query_errors_count++
+                    // Restar del contador de enviados
+                    this.massive.success_count--
                 }
             },
 
             retryErrors() {
-                // Marcar los errores como pendientes para reintentar
+                // Marcar los errores de envío como pendientes para reintentar
                 this.massive.days.forEach(day => {
                     if (day.status === 'error') {
                         day.status = 'pending'
                         day.message = null
+                        day.summary_id = null
+                        day.identifier = null
                     }
                 })
                 this.massive.finished = false
                 this.processMassive()
+            },
+
+            async retryQueries() {
+                // Reintentar solo las consultas fallidas
+                this.massive.processing = true
+                this.massive.finished = false
+
+                const daysToQuery = this.massive.days
+                    .map((day, index) => ({ day, index }))
+                    .filter(({ day }) => day.status === 'query_error' && day.summary_id)
+
+                for (const { day, index } of daysToQuery) {
+                    this.massive.current_date = day.date_of_issue
+
+                    // Resetear contador antes de reintentar
+                    this.massive.query_errors_count--
+
+                    await this.queryDayStatus(index)
+                    await this.sleep(2000)
+                }
+
+                this.massive.processing = false
+                this.massive.finished = true
+                this.$eventHub.$emit('reloadData')
             },
 
             sleep(ms) {

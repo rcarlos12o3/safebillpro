@@ -292,6 +292,8 @@ class SummaryController extends Controller
                 'message' => $result['message'] ?? 'Resumen procesado',
                 'date' => $dateOfReference,
                 'documents_count' => $documents->count(),
+                'summary_id' => $result['summary_id'] ?? null,
+                'identifier' => $result['identifier'] ?? null,
                 'data' => $result['data'] ?? null
             ];
 
