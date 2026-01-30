@@ -129,7 +129,7 @@ class SaleNoteController extends Controller
                 'print_ticket' => $this->sale_note->getUrlPrintPdf('ticket'),
             ],
             'data_ws' => [
-                'message_text' => "Su comprobante de pago electrónico {$this->sale_note->number_full} ha sido generado correctamente, puede revisarlo en el siguiente enlace: ".url('')."/print/document/{$this->sale_note->external_id}/a4"."",
+                'message_text' => "*Hola " . optional($this->sale_note->person)->name . "*\nSu comprobante de pago electrónico {$this->sale_note->number_full} ha sido generado correctamente, puede revisarlo en el siguiente enlace: ".url('')."/print/document/{$this->sale_note->external_id}/a4",
                 "pdf_a4_filename" => url('')."/api/document-file/salenote/{$this->sale_note->external_id}/a4",
                 "full_filename" => $this->sale_note->filename.".pdf",
                 "customer_telephone" => optional($this->sale_note->person)->telephone

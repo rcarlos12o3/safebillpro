@@ -7,7 +7,7 @@
         <form action="" autocomplete="off" @submit.prevent="submit">
           <div class="form-body">
             <p v-show="!form.qr_api_enable">Deshabilitado esta función tiene dos formas de enviar sus comprobantes, a través de Chat Buho o el Servicio de WhatsApp Web</p>
-            <p v-show="form.qr_api_enable">Recuerde que cuando activo esta funcionalidad necesita credenciales de un servicio, para registrarse entre a la página <a class="text-primary" href="https://qr-api.com">QR Api</a></p>
+            <p v-show="form.qr_api_enable">Configuración para Evolution API. Ingrese la URL de su servidor, API Key y el nombre de la instancia.</p>
 
             <div class="row">
               <div class="col-12">
@@ -39,6 +39,19 @@
                     v-if="errors.qr_api_key_ws"
                     class="invalid-feedback d-block"
                     v-text="errors.qr_api_key_ws[0]"></small>
+                </div>
+              </div>
+              <div class="col-12" v-show="form.qr_api_enable_ws">
+                <div :class="{'has-danger': errors.qr_api_instance_ws}"
+                  class="form-group">
+                  <label class="control-label">
+                    Nombre de Instancia
+                  </label>
+                  <el-input v-model="form.qr_api_instance_ws" placeholder="Ej: mi-instancia"></el-input>
+                  <small
+                    v-if="errors.qr_api_instance_ws"
+                    class="invalid-feedback d-block"
+                    v-text="errors.qr_api_instance_ws[0]"></small>
                 </div>
               </div>
 

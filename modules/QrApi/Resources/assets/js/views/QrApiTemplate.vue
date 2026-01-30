@@ -48,7 +48,7 @@ export default {
 
     methods: {
         enableSend() {
-            if(this.config.qr_api_url_ws != '' && this.config.qr_api_key_ws != '') {
+            if(this.config.qr_api_url_ws != '' && this.config.qr_api_key_ws != '' && this.config.qr_api_instance_ws != '') {
                 this.button_disable = false
             }
         },
@@ -61,20 +61,23 @@ export default {
             const {extension_only, filename_only} = this.wsData;
             this.convertFileToBase64(this.wsFile)
                 .then(file_encode64 => {
-                    
+
                     this.setForm(file_encode64, `${filename_only}.${extension_only}`)
+                    const baseUrl = this.config.qr_api_url_ws.replace(/\/+$/, '');
+                    const instance = this.config.qr_api_instance_ws;
                     return this.$http
-                        .post(`${this.config.qr_api_url_ws}\\api\\message\\send\\pdf`, this.form, {
+                        .post(`${baseUrl}/message/sendMedia/${instance}`, this.form, {
                             headers: {
-                                "Authorization" : `Bearer ${this.config.qr_api_key_ws}`
+                                "apikey": this.config.qr_api_key_ws
                             }
                         })
                         .then(response => {
-                            if(response.status == 200) {
+                            if(response.status == 200 || response.status == 201) {
                                 return this.$message.success('Documento enviado con exito')
                             }
                         })
                         .catch(error => {
+                            console.error('Error Evolution API:', (error.response && error.response.data) || error);
                             return this.$message.error('No se puede enviar')
                         })
                         .finally(() => {
@@ -85,10 +88,12 @@ export default {
         },
         setForm(base64file, full_filename) {
             this.form = {
-                file: base64file,
                 number: `51${this.wsPhone}`,
-                message: this.wsMessage,
-                filename: full_filename 
+                mediatype: 'document',
+                mimetype: 'application/pdf',
+                caption: this.wsMessage,
+                media: base64file,
+                fileName: full_filename
             }
         },
         async convertFileToBase64(url) {

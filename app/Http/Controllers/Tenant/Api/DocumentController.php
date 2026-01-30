@@ -57,7 +57,7 @@ class DocumentController extends Controller
                 'print_ticket' =>  $document->getUrlPrintByFormat('ticket'),
             ],
             'data_ws' => [
-                'message_text' => "Su comprobante de pago electrónico {$document->number_full} ha sido generado correctamente, puede revisarlo en el siguiente enlace: ".url('')."/print/document/{$document->external_id}/a4"."",
+                'message_text' => "*Hola " . optional($document->person)->name . "*\nSu comprobante de pago electrónico {$document->number_full} ha sido generado correctamente, puede revisarlo en el siguiente enlace: ".url('')."/print/document/{$document->external_id}/a4",
                 "pdf_a4_filename" => url('')."/api/document-file/document/{$document->external_id}/a4",
                 "full_filename" => $document->filename.".pdf",
                 "customer_telephone" => optional($document->person)->telephone

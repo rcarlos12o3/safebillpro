@@ -18,13 +18,15 @@ class QrApiController extends Controller
         $data = Configuration::select([
             'qr_api_url',
             'qr_api_apiKey',
-            'qr_api_enable'
+            'qr_api_enable',
+            'qr_api_instance'
         ])->first();
 
         return [
             'qr_api_url_ws' => $data->qr_api_url,
             'qr_api_key_ws' => $data->qr_api_apiKey,
-            'qr_api_enable_ws' => $data->qr_api_enable
+            'qr_api_enable_ws' => $data->qr_api_enable,
+            'qr_api_instance_ws' => $data->qr_api_instance
         ];
     }
 
@@ -33,12 +35,14 @@ class QrApiController extends Controller
         $request->validate([
             'qr_api_url_ws' => 'required',
             'qr_api_key_ws' => 'required',
-            'qr_api_enable_ws' => 'required'
+            'qr_api_enable_ws' => 'required',
+            'qr_api_instance_ws' => 'required'
         ]);
         $config = Configuration::first();
         $config->qr_api_url = $request->qr_api_url_ws;
         $config->qr_api_apiKey = $request->qr_api_key_ws;
         $config->qr_api_enable = $request->qr_api_enable_ws;
+        $config->qr_api_instance = $request->qr_api_instance_ws;
         $config->save();
 
         return [
