@@ -231,8 +231,8 @@
                             <div class="col-lg-12">
                                 <div :class="{ 'has-danger': errors.delivery_address_id }" class="form-group">
                                     <label class="control-label">Punto de llegada<span class="text-danger"> *</span>
-                                        <a href="#" v-if="form.customer_id"
-                                            @click.prevent="showDialogDeliveryAddressForm = true">[+ Nuevo]</a>
+                                        <a href="#" v-if="form.customer_id || form.transfer_reason_type_id === '04'"
+                                            @click.prevent="openDeliveryAddressDialog">[+ Nuevo]</a>
                                     </label>
                                     <el-select v-model="form.delivery_address_id"
                                         placeholder="Seleccionar punto de llegada">
@@ -723,7 +723,7 @@
             <transport-form :showDialog.sync="showDialogTransportForm" @success="successTransport"></transport-form>
     
             <origin-address-form :showDialog.sync="showDialogOriginAddressForm"
-                                 :establishmentId="form.establishment_id"
+                                 :establishmentId="originAddressForDelivery ? null : form.establishment_id"
                 @success="successOriginAddress"></origin-address-form>
     
             <delivery-address-form :showDialog.sync="showDialogDeliveryAddressForm" title="Nuevo punto de llegada"
@@ -839,6 +839,7 @@ export default {
             showDialogDispatcherForm: false,
             showDialogOriginAddressForm: false,
             showDialogDeliveryAddressForm: false,
+            originAddressForDelivery: false,
             IdLoteSelected: false,
             showDialogLots: false,
             min_qty: 0.0001,
@@ -969,6 +970,14 @@ export default {
         this.$eventHub.$on('initInputPerson', () => {
             this.initInputPerson()
         });
+    },
+    watch: {
+        showDialogOriginAddressForm(value) {
+            // Resetear la bandera cuando se cierra el diálogo
+            if (!value && this.originAddressForDelivery) {
+                this.originAddressForDelivery = false;
+            }
+        }
     },
     methods: {
         ...mapActions([
@@ -1716,12 +1725,32 @@ export default {
                 });
         },
         async successOriginAddress(id) {
-            this.form.origin_address_id = id;
-            await this.getOriginAddresses(this.form.establishment_id);
+            if (this.originAddressForDelivery) {
+                // Se está usando para punto de llegada en motivo '04'
+                this.form.delivery_address_id = id;
+                await this.getAddressesOtherEstablishment(this.form.establishment_id);
+                this.originAddressForDelivery = false;
+            } else {
+                // Se está usando para punto de partida (uso normal)
+                this.form.origin_address_id = id;
+                await this.getOriginAddresses(this.form.establishment_id);
+            }
         },
         async successDeliveryAddress(id) {
             this.form.delivery_address_id = id;
-            await this.getDeliveryAddresses(this.form.customer_id);
+            if (this.form.transfer_reason_type_id === '04') {
+                await this.getAddressesOtherEstablishment(this.form.establishment_id);
+            } else {
+                await this.getDeliveryAddresses(this.form.customer_id);
+            }
+        },
+        openDeliveryAddressDialog() {
+            if (this.form.transfer_reason_type_id === '04') {
+                this.originAddressForDelivery = true;
+                this.showDialogOriginAddressForm = true;
+            } else {
+                this.showDialogDeliveryAddressForm = true;
+            }
         },
         async getOriginAddresses(establishment_id) {
             await this.$http.get(`/${this.resource}/get_origin_addresses/${establishment_id}`)

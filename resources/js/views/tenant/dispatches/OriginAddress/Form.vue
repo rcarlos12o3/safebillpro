@@ -97,6 +97,7 @@ export default {
         },
         async create() {
             this.initForm();
+            this.form.establishment_id = this.establishmentId;
             this.titleDialog = (this.recordId) ? 'Editar dirección de partida' : 'Nueva dirección de partida'
             if (this.recordId) {
                 await this.$http.get(`/${this.resource}/record/${this.recordId}`)

@@ -828,7 +828,7 @@ class DispatchController extends Controller
 
         foreach ($other_establishments as $establishment) {
             $records[] = [
-                'id' => $establishment->id,
+                'id' => 'est_' . $establishment->id,
                 'location_id' => [
                     $establishment->department_id,
                     $establishment->province_id,
@@ -837,10 +837,13 @@ class DispatchController extends Controller
                 'address' => $establishment->address,
             ];
         }
-        
+
         $origin_addresses = OriginAddress::query()
             ->where('is_active', true)
-            ->where('establishment_id', '!=', $id)
+            ->where(function($query) use ($id) {
+                $query->where('establishment_id', '!=', $id)
+                      ->orWhereNull('establishment_id');
+            })
             ->get();
 
         foreach ($origin_addresses as $row) {
@@ -849,10 +852,6 @@ class DispatchController extends Controller
                 'address' => $row->address,
                 'location_id' => $row->location_id,
             ];
-        }
-
-        foreach ($records as $index => &$record) {
-            $record['id'] = $index + 1;
         }
 
         return $records;
