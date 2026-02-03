@@ -147,15 +147,6 @@ final class Service
         ];
         $token = $this->getToken();
 
-        Log::info("---PSE sendXmlSigned REQUEST---");
-        Log::info("URL: " . $url);
-        Log::info("Filename: " . $filename);
-        Log::info("Body structure: " . json_encode(array_keys($body)));
-        Log::info("Body content length - nombre_xml_firmado: " . strlen($body['nombre_xml_firmado']));
-        Log::info("Body content length - contenido_xml_firmado: " . strlen($body['contenido_xml_firmado']));
-        Log::info("Token present: " . (!empty($token['token']) ? 'Yes' : 'No'));
-        Log::info("---END REQUEST INFO---");
-
         $client = new Client();
         $response = $client->request('POST', $url, [
             'headers' => [
