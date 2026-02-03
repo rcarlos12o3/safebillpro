@@ -27,13 +27,5 @@ final class Endpoints
     const SEND = 'https://app.validapse.com/api/cpe/enviar';
     const QUERY = 'https://app.validapse.com/api/cpe/consultar';
 
-    // const BETA_TOKEN = 'https://demo-cpe.qpse.pe/api/auth/cpe/token';
-    // const BETA_GENERATE = 'https://demo-cpe.qpse.pe/api/cpe/generar';
-    // const BETA_SEND = 'https://demo-cpe.qpse.pe/api/cpe/enviar';
-    // const BETA_QUERY = 'https://demo-cpe.qpse.pe/api/cpe/consultar';
 
-    // const TOKEN = 'https://cpe.qpse.pe/api/auth/cpe/token';
-    // const GENERATE = 'https://cpe.qpse.pe/api/cpe/generar';
-    // const SEND = 'https://cpe.qpse.pe/api/cpe/enviar';
-    // const QUERY = 'https://cpe.qpse.pe/api/cpe/consultar';
 }
