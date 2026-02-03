@@ -49,7 +49,7 @@ final class Service
         $url = $company->soap_type_id == 02 ? Endpoints::TOKEN : Endpoints::BETA_TOKEN;
         $body = [
             'usuario' => $company->user_pse,
-            'contraseña' => $company->password_pse,
+            'password' => $company->password_pse,
         ];
 
         $client = new Client();
