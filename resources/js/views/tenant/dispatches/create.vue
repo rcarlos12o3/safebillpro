@@ -235,12 +235,39 @@
                                             @click.prevent="openDeliveryAddressDialog">[+ Nuevo]</a>
                                     </label>
                                     <el-select v-model="form.delivery_address_id"
-                                        placeholder="Seleccionar punto de llegada">
+                                        placeholder="Seleccionar punto de llegada"
+                                        @change="changeDeliveryAddress">
                                         <el-option v-for="option in delivery_addresses" :key="option.id"
                                             :label="option.address" :value="option.id"></el-option>
+                                        <el-option v-if="form.transfer_reason_type_id === '04'"
+                                            :value="-1"
+                                            label="[Dirección personalizada - No guardar]"></el-option>
                                     </el-select>
                                     <small v-if="errors.delivery_address_id" class="form-control-feedback"
                                         v-text="errors.delivery_address_id[0]"></small>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Campos para dirección personalizada -->
+                        <div class="row" v-if="form.delivery_address_id === -1 && form.transfer_reason_type_id === '04'">
+                            <div class="col-lg-8">
+                                <div :class="{ 'has-danger': errors.custom_delivery_address }" class="form-group">
+                                    <label class="control-label">Dirección<span class="text-danger"> *</span></label>
+                                    <el-input v-model="form.custom_delivery_address"
+                                              placeholder="Ingrese la dirección de llegada"></el-input>
+                                    <small v-if="errors.custom_delivery_address" class="form-control-feedback"
+                                        v-text="errors.custom_delivery_address[0]"></small>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div :class="{ 'has-danger': errors.custom_delivery_location_id }" class="form-group">
+                                    <label class="control-label">Ubigeo<span class="text-danger"> *</span></label>
+                                    <el-cascader v-model="form.custom_delivery_location_id"
+                                                 :options="locations"
+                                                 placeholder="Seleccionar ubigeo"
+                                                 filterable></el-cascader>
+                                    <small v-if="errors.custom_delivery_location_id" class="form-control-feedback"
+                                        v-text="errors.custom_delivery_location_id[0]"></small>
                                 </div>
                             </div>
                         </div>
@@ -1027,6 +1054,8 @@ export default {
                 terms_condition: null,
                 origin_address_id: null,
                 delivery_address_id: null,
+                custom_delivery_address: null,
+                custom_delivery_location_id: [],
                 date_delivery_to_transport: null,
                 secondary_transports: null,
                 secondary_drivers: null,
@@ -1284,6 +1313,13 @@ export default {
             await this.getDeliveryAddresses(this.form.customer_id);
             if (this.delivery_addresses.length > 0) {
                 this.form.delivery_address_id = _.head(this.delivery_addresses).id;
+            }
+        },
+        changeDeliveryAddress() {
+            // Si no es dirección personalizada, limpiar los campos custom
+            if (this.form.delivery_address_id !== -1) {
+                this.form.custom_delivery_address = null;
+                this.form.custom_delivery_location_id = [];
             }
         },
         onLoadItemsFromSummary(items, itemsFromStorage) {
@@ -1649,14 +1685,34 @@ export default {
             }
 
             this.form.origin = _.find(this.origin_addresses, { 'id': this.form.origin_address_id });
-            this.form.delivery = _.find(this.delivery_addresses, { 'id': this.form.delivery_address_id });
+
+            // Crear una copia del formulario para enviar
+            let formToSend = { ...this.form };
+
+            // Si es dirección personalizada (ID -1), crear el objeto delivery manualmente
+            if (this.form.delivery_address_id === -1 && this.form.transfer_reason_type_id === '04') {
+                if (!this.form.custom_delivery_address || this.form.custom_delivery_location_id.length !== 3) {
+                    return this.$message.error('La dirección y ubigeo personalizados son obligatorios');
+                }
+                formToSend.delivery = {
+                    address: this.form.custom_delivery_address,
+                    location_id: this.form.custom_delivery_location_id[2], // distrito
+                    country_id: 'PE',
+                    code: '0000'
+                };
+                // Establecer delivery_address_id como NULL para la BD
+                formToSend.delivery_address_id = null;
+            } else {
+                formToSend.delivery = _.find(this.delivery_addresses, { 'id': this.form.delivery_address_id });
+            }
+
             // this.form.origin = this.origin;
 
             // if (this.form.origin.location_id.length !== 3 || this.form.delivery.location_id.length !== 3) {
             //     return this.$message.error('El campo ubigeo es obligatorio')
             // }
             this.loading_submit = true;
-            this.$http.post(`/${this.resource}`, this.form).then(response => {
+            this.$http.post(`/${this.resource}`, formToSend).then(response => {
                 if (response.data.success) {
                     this.initForm();
                     this.recordId = response.data.data.id

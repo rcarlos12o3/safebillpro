@@ -824,6 +824,7 @@ class DispatchController extends Controller
 
         $other_establishments = Establishment::query()
             ->where('id', '!=', $id)
+            ->where('code', '!=', 'CUSTOM_04') // Excluir el establishment genérico de la lista visual
             ->get();
 
         foreach ($other_establishments as $establishment) {

@@ -171,7 +171,12 @@
                 <cbc:ID schemeAgencyName="PE:INEI"
                         schemeName="Ubigeos">{{ $document['delivery_location_id'] }}</cbc:ID>
                 <!-- CODIGO DE ESTABLECIMIENTO ANEXO DE LLEGADA -->
-                @if($document['customer_identity_document_type_id'] === '6')
+                @if($document['transfer_reason_type_id'] === '04')
+                {{-- Para motivo 04 (traslado entre establecimientos), siempre enviar código de establecimiento --}}
+                <cbc:AddressTypeCode listAgencyName="PE:SUNAT"
+                                     listName="Establecimientos anexos"
+                                     listID="{{ $document['company_number'] }}">{{ $document['delivery_code'] ?? '0000' }}</cbc:AddressTypeCode>
+                @elseif($document['customer_identity_document_type_id'] === '6')
                 <cbc:AddressTypeCode listAgencyName="PE:SUNAT"
                                      listName="Establecimientos anexos"
                                      listID="{{ $document['customer_number'] }}">{{ $document['delivery_code'] }}</cbc:AddressTypeCode>

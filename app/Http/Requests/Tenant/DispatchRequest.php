@@ -19,12 +19,9 @@ class DispatchRequest extends FormRequest
     public function rules()
     {
         //$id = $this->input('id');
-        return [
+        $rules = [
             'unit_type_id' => [
                 'required',
-            ],
-            'delivery_address_id'=> [
-                'required_if:document_type_id, "09"',
             ],
             'origin_address_id'=> [
                 'required_if:document_type_id, "09"',
@@ -84,6 +81,19 @@ class DispatchRequest extends FormRequest
                 'required_if:transfer_reason_type_id, "09"',
             ],
         ];
+
+        // delivery_address_id es obligatorio EXCEPTO cuando es motivo '04' con dirección personalizada
+        if ($this->input('document_type_id') === '09') {
+            if ($this->input('transfer_reason_type_id') === '04' && $this->has('delivery.address')) {
+                // Motivo '04' con dirección personalizada: delivery_address_id puede ser null
+                $rules['delivery_address_id'] = ['nullable'];
+            } else {
+                // Otros casos: delivery_address_id es obligatorio
+                $rules['delivery_address_id'] = ['required'];
+            }
+        }
+
+        return $rules;
     }
 
     public function messages()

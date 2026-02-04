@@ -137,15 +137,14 @@
         @endif
     </tr>
     <tr>
-        <td colspan="2">P.Partida: {{ $document->origin->location_id }} - {{ $document->origin->address }}
-            {{ ($establishment->address !== '-')? $establishment->address : '' }}
+        <td colspan="2">P.Partida: {{ $document->origin ? ($document->origin->location_id ?? '') : '' }} - {{ $document->origin ? $document->origin->address : '' }}
             {{ ($establishment->district_id !== '-')? ', '.$establishment->district->description : '' }}
             {{ ($establishment->province_id !== '-')? ', '.$establishment->province->description : '' }}
             {{ ($establishment->department_id !== '-')? '- '.$establishment->department->description : '' }}
         </td>
     </tr>
     <tr>
-        <td colspan="2">P.Llegada: {{ $document->delivery->location_id }} - {{ $document->delivery->address }}
+        <td colspan="2">P.Llegada: {{ $document->delivery ? ($document->delivery->location_id ?? '') : '' }} - {{ $document->delivery ? $document->delivery->address : '' }}
             @php
                 use Illuminate\Support\Facades\DB;
                 $delivery = DB::connection('tenant')->table('districts')
