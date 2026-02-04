@@ -137,26 +137,44 @@
         @endif
     </tr>
     <tr>
-        <td colspan="2">P.Partida: {{ $document->origin ? ($document->origin->location_id ?? '') : '' }} - {{ $document->origin ? $document->origin->address : '' }}
-            {{ ($establishment->district_id !== '-')? ', '.$establishment->district->description : '' }}
-            {{ ($establishment->province_id !== '-')? ', '.$establishment->province->description : '' }}
-            {{ ($establishment->department_id !== '-')? '- '.$establishment->department->description : '' }}
+        <td colspan="2">P.Partida: {{ $document->origin ? $document->origin->address : '' }}
+            @php
+                use Illuminate\Support\Facades\DB;
+                $origin_ubigeo = null;
+                if($document->origin && property_exists($document->origin, 'location_id') && $document->origin->location_id) {
+                    $origin_ubigeo = DB::connection('tenant')->table('districts')
+                        ->join('provinces', 'districts.province_id', '=', 'provinces.id')
+                        ->join('departments', 'provinces.department_id', '=', 'departments.id')
+                        ->where('districts.id', '=', $document->origin->location_id)
+                        ->select('districts.description as district', 'provinces.description as province','departments.description as department')
+                        ->first();
+                }
+            @endphp
+            @if($origin_ubigeo)
+                , {{ $origin_ubigeo->district }}
+                , {{ $origin_ubigeo->province }}
+                - {{ $origin_ubigeo->department }}
+            @endif
         </td>
     </tr>
     <tr>
-        <td colspan="2">P.Llegada: {{ $document->delivery ? ($document->delivery->location_id ?? '') : '' }} - {{ $document->delivery ? $document->delivery->address : '' }}
+        <td colspan="2">P.Llegada: {{ $document->delivery ? $document->delivery->address : '' }}
             @php
-                use Illuminate\Support\Facades\DB;
-                $delivery = DB::connection('tenant')->table('districts')
-                    ->join('provinces', 'districts.province_id', '=', 'provinces.id')
-                    ->join('departments', 'provinces.department_id', '=', 'departments.id')
-                    ->where('districts.id', '=', $document->delivery->location_id)
-                    ->select('districts.description as district_description', 'provinces.description as province_description','departments.description as department_description')
-                    ->first();
+                $delivery_ubigeo = null;
+                if($document->delivery && property_exists($document->delivery, 'location_id') && $document->delivery->location_id) {
+                    $delivery_ubigeo = DB::connection('tenant')->table('districts')
+                        ->join('provinces', 'districts.province_id', '=', 'provinces.id')
+                        ->join('departments', 'provinces.department_id', '=', 'departments.id')
+                        ->where('districts.id', '=', $document->delivery->location_id)
+                        ->select('districts.description as district', 'provinces.description as province','departments.description as department')
+                        ->first();
+                }
             @endphp
-            {{ ($delivery->district_description !== '-')? ', '.$delivery->district_description : '' }}
-            {{ ($delivery->province_description !== '-')? ', '.$delivery->province_description : '' }}
-            {{ ($delivery->department_description !== '-')? '- '.$delivery->department_description : '' }}
+            @if($delivery_ubigeo)
+                , {{ $delivery_ubigeo->district }}
+                , {{ $delivery_ubigeo->province }}
+                - {{ $delivery_ubigeo->department }}
+            @endif
         </td>
     </tr>
     <tr>
