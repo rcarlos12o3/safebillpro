@@ -30,6 +30,17 @@ trait StorageDocument
     public function downloadStorage($filename, $file_type, $root = null)
     {
         $this->setData($filename, $file_type, $root);
+
+        // Si es PDF, abrirlo en el navegador en lugar de descargarlo
+        if (in_array($file_type, ['pdf', 'quotation', 'sale_note', 'purchase_quotation', 'purchase_order', 'order_note', 'sale_opportunity', 'contract', 'order_form', 'purchase', 'devolution', 'report_inventory_pdf', 'download_tray_pdf', 'income', 'expense'])) {
+            $path = Storage::disk('tenant')->path($this->_folder.DIRECTORY_SEPARATOR.$this->_filename);
+            return response()->file($path, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$this->_filename.'"'
+            ]);
+        }
+
+        // Para XML, ZIP y otros, descargar normalmente
         return Storage::disk('tenant')->download($this->_folder.DIRECTORY_SEPARATOR.$this->_filename);
     }
 
