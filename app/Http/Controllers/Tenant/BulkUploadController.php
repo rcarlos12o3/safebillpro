@@ -539,8 +539,20 @@ class BulkUploadController extends Controller
         }
 
         // Obtener el siguiente número correlativo para la serie
-        $lastNumber = Document::getLastNumberBySerie($serie->number);
-        $nextNumber = $lastNumber + 1;
+        // Considerar tanto el último documento creado como la configuración inicial de la serie
+        $lastNumberFromDocuments = Document::getLastNumberBySerie($serie->number);
+
+        // Verificar si existe una configuración inicial para la serie
+        $seriesConfiguration = \Modules\Document\Models\SeriesConfiguration::where('series', $serie->number)
+            ->where('document_type_id', $serie->document_type_id)
+            ->first();
+
+        // Usar el mayor entre la configuración inicial y el último documento
+        if ($seriesConfiguration && $seriesConfiguration->number > $lastNumberFromDocuments) {
+            $nextNumber = (int)$seriesConfiguration->number + 1;
+        } else {
+            $nextNumber = $lastNumberFromDocuments + 1;
+        }
 
         // Usar el helper EstablishmentInput para construir los datos del establecimiento correctamente
         $establishmentData = \App\CoreFacturalo\Requests\Inputs\Common\EstablishmentInput::set($establishment->id);

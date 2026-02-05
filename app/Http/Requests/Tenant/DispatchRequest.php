@@ -82,9 +82,17 @@ class DispatchRequest extends FormRequest
             ],
         ];
 
-        // delivery_address_id es obligatorio EXCEPTO cuando es motivo '04' con dirección personalizada
+        // delivery_address_id y origin_address_id: validación especial según motivo
         if ($this->input('document_type_id') === '09') {
-            if ($this->input('transfer_reason_type_id') === '04' && $this->has('delivery.address')) {
+            $transferReason = $this->input('transfer_reason_type_id');
+
+            if ($transferReason === '02') {
+                // Motivo '02' (compra): los datos se envían como objetos JSON
+                $rules['origin_address_id'] = ['nullable'];
+                $rules['delivery_address_id'] = ['nullable'];
+                $rules['origin.address'] = ['required', 'max:100'];
+                $rules['delivery.address'] = ['required', 'max:100'];
+            } elseif ($transferReason === '04' && $this->has('delivery.address')) {
                 // Motivo '04' con dirección personalizada: delivery_address_id puede ser null
                 $rules['delivery_address_id'] = ['nullable'];
             } else {

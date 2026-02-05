@@ -524,11 +524,23 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
     protected function getLastNumberForSerie($serieNumber)
     {
         if (!isset($this->seriesLastNumbers[$serieNumber])) {
+            // Obtener el último número de documentos existentes
             $lastDocument = \App\Models\Tenant\Document::where('series', $serieNumber)
                 ->orderBy('number', 'desc')
                 ->first();
 
-            $this->seriesLastNumbers[$serieNumber] = $lastDocument ? $lastDocument->number : 0;
+            $lastNumberFromDocuments = $lastDocument ? $lastDocument->number : 0;
+
+            // Verificar si hay una configuración de serie que define un número inicial
+            $seriesConfiguration = \Modules\Document\Models\SeriesConfiguration::where('series', $serieNumber)
+                ->first();
+
+            // Usar el mayor entre el último número de documentos y el número configurado en series_configurations
+            if ($seriesConfiguration && $seriesConfiguration->number > $lastNumberFromDocuments) {
+                $this->seriesLastNumbers[$serieNumber] = (int)$seriesConfiguration->number;
+            } else {
+                $this->seriesLastNumbers[$serieNumber] = $lastNumberFromDocuments;
+            }
         }
 
         return $this->seriesLastNumbers[$serieNumber];

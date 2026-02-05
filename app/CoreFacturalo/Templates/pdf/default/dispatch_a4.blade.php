@@ -63,6 +63,36 @@
         </tr>
         </tbody>
     </table>
+@elseif($document->transfer_reason_type_id === '02')
+    {{-- Motivo 02 (Compra): Mostrar como REMITENTE --}}
+    <table class="full-width border-box mt-10 mb-10">
+        <thead>
+        <tr>
+            <th class="border-bottom text-left">REMITENTE (Proveedor)</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>Razón Social: {{ $customer->name }}</td>
+        </tr>
+        <tr>
+            <td>{{ $customer->identity_document_type->description }}: {{ $customer->number }}
+            </td>
+        </tr>
+        <tr>
+            <td>Dirección: {{ $customer->address }}
+                {{ ($customer->district_id !== '-')? ', '.$customer->district->description : '' }}
+                {{ ($customer->province_id !== '-')? ', '.$customer->province->description : '' }}
+                {{ ($customer->department_id !== '-')? '- '.$customer->department->description : '' }}
+            </td>
+        </tr>
+        @if ($customer->telephone)
+            <tr>
+                <td>Teléfono:{{ $customer->telephone }}</td>
+            </tr>
+        @endif
+        </tbody>
+    </table>
 @else
     <table class="full-width border-box mt-10 mb-10">
         <thead>
@@ -104,7 +134,13 @@
 <table class="full-width border-box mt-10 mb-10">
     <thead>
     <tr>
-        <th class="border-bottom text-left" colspan="2">ENVIO</th>
+        <th class="border-bottom text-left" colspan="2">
+            @if($document->transfer_reason_type_id === '02')
+                DESTINATARIO Y DATOS DE TRASLADO
+            @else
+                ENVIO
+            @endif
+        </th>
     </tr>
     </thead>
     <tbody>

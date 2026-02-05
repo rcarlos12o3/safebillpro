@@ -10,6 +10,10 @@ class XmlFormat
         $domDocument = $domElement->ownerDocument;
         $domDocument->preserveWhiteSpace = false;
         $domDocument->formatOutput = (bool)$formatOutput;
+
+        // Asegurar que el encoding sea UTF-8
+        $domDocument->encoding = 'UTF-8';
+
         $domDocument->loadXML($sxe->asXML(), LIBXML_NOBLANKS);
 
         return (bool)$declaration ? $domDocument->saveXML() : $domDocument->saveXML($domDocument->documentElement);

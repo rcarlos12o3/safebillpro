@@ -214,8 +214,10 @@
                         <div class="row">
                             <div class="col-lg-12">
                                 <div :class="{ 'has-danger': errors.origin_address_id }" class="form-group">
-                                    <label class="control-label">Punto de partida<span class="text-danger"> *</span>
-                                        <a href="#"
+                                    <label class="control-label">
+                                        {{ form.transfer_reason_type_id === '02' ? 'Punto de partida (Proveedor)' : 'Punto de partida' }}
+                                        <span class="text-danger"> *</span>
+                                        <a href="#" v-if="form.transfer_reason_type_id !== '02'"
                                            @click.prevent="showDialogOriginAddressForm = true">[+ Nuevo]</a>
                                     </label>
                                     <el-select v-model="form.origin_address_id" placeholder="Seleccionar punto de partida">
@@ -230,8 +232,12 @@
                         <div class="row">
                             <div class="col-lg-12">
                                 <div :class="{ 'has-danger': errors.delivery_address_id }" class="form-group">
-                                    <label class="control-label">Punto de llegada<span class="text-danger"> *</span>
-                                        <a href="#" v-if="form.customer_id || form.transfer_reason_type_id === '04'"
+                                    <label class="control-label">
+                                        {{ form.transfer_reason_type_id === '02' ? 'Punto de llegada (Mi establecimiento)' : 'Punto de llegada' }}
+                                        <span class="text-danger"> *</span>
+                                        <a href="#" v-if="form.customer_id && form.transfer_reason_type_id !== '02'"
+                                            @click.prevent="openDeliveryAddressDialog">[+ Nuevo]</a>
+                                        <a href="#" v-if="form.transfer_reason_type_id === '04'"
                                             @click.prevent="openDeliveryAddressDialog">[+ Nuevo]</a>
                                     </label>
                                     <el-select v-model="form.delivery_address_id"
@@ -1116,18 +1122,56 @@ export default {
             this.warehousesDetail = item.warehouses
             this.showWarehousesDetail = true
         },
-        changeTransferReasonType() {
+        async changeTransferReasonType() {
             const isReasonType09 = this.form.transfer_reason_type_id === '09';
             const isReasonType04 = this.form.transfer_reason_type_id === '04';
+            const isReasonType02 = this.form.transfer_reason_type_id === '02';
 
             this.form.related = isReasonType09 ? { number: null, document_type_id: 50 } : {};
             this.form.customer_id = isReasonType09 || isReasonType04 ? null : this.form.customer_id;
 
-            this.delivery = isReasonType09 
+            this.delivery = isReasonType09
                 ? { country_id: 'PE', location_id: [], address: null }
                 : { ...this.delivery, country_id: 'PE' };
 
-            isReasonType04 ? this.getAddressesOtherEstablishment(this.form.establishment_id) : this.searchRemoteCustomers('');
+            // Limpiar selecciones
+            this.form.origin_address_id = null;
+            this.form.delivery_address_id = null;
+
+            if (isReasonType04) {
+                await this.getAddressesOtherEstablishment(this.form.establishment_id);
+            } else if (isReasonType02) {
+                // Para compra: origen es proveedor, destino es establecimiento
+                if (this.form.customer_id) {
+                    await this.getOriginAddressesFromCustomer(this.form.customer_id);
+                    if (this.origin_addresses.length > 0) {
+                        this.form.origin_address_id = _.head(this.origin_addresses).id;
+                    }
+                } else {
+                    // Limpiar direcciones de origen si no hay cliente
+                    this.origin_addresses = [];
+                }
+                await this.getDeliveryAddressesFromEstablishment(this.form.establishment_id);
+                if (this.delivery_addresses.length > 0) {
+                    this.form.delivery_address_id = _.head(this.delivery_addresses).id;
+                }
+            } else {
+                // Para otros motivos: origen es establecimiento, destino es cliente
+                await this.getOriginAddresses(this.form.establishment_id);
+                if (this.origin_addresses.length > 0) {
+                    this.form.origin_address_id = _.head(this.origin_addresses).id;
+                }
+                // Limpiar direcciones de destino si no hay cliente
+                if (this.form.customer_id) {
+                    await this.getDeliveryAddresses(this.form.customer_id);
+                    if (this.delivery_addresses.length > 0) {
+                        this.form.delivery_address_id = _.head(this.delivery_addresses).id;
+                    }
+                } else {
+                    this.delivery_addresses = [];
+                }
+                this.searchRemoteCustomers('');
+            }
         },
         getFormatQuantity(quantity) {
             return _.round(quantity, 4)
@@ -1309,10 +1353,22 @@ export default {
             })
         },
         async changeCustomer() {
-            this.form.delivery_address_id = null;
-            await this.getDeliveryAddresses(this.form.customer_id);
-            if (this.delivery_addresses.length > 0) {
-                this.form.delivery_address_id = _.head(this.delivery_addresses).id;
+            const isReasonType02 = this.form.transfer_reason_type_id === '02';
+
+            if (isReasonType02) {
+                // Para compra: las direcciones del cliente van en origen
+                this.form.origin_address_id = null;
+                await this.getOriginAddressesFromCustomer(this.form.customer_id);
+                if (this.origin_addresses.length > 0) {
+                    this.form.origin_address_id = _.head(this.origin_addresses).id;
+                }
+            } else {
+                // Para otros motivos: las direcciones del cliente van en destino
+                this.form.delivery_address_id = null;
+                await this.getDeliveryAddresses(this.form.customer_id);
+                if (this.delivery_addresses.length > 0) {
+                    this.form.delivery_address_id = _.head(this.delivery_addresses).id;
+                }
             }
         },
         changeDeliveryAddress() {
@@ -1438,9 +1494,20 @@ export default {
                     'establishment_id': this.form.establishment_id,
                     'document_type_id': this.form.document_type_id
                 });
-                await this.getOriginAddresses(this.form.establishment_id)
-                if(this.form.transfer_reason_type_id==='04'){
-                    await this.getAddressesOtherEstablishment(this.form.establishment_id)
+
+                const isReasonType02 = this.form.transfer_reason_type_id === '02';
+                const isReasonType04 = this.form.transfer_reason_type_id === '04';
+
+                if (isReasonType02) {
+                    // Para compra: establecimiento va en destino
+                    await this.getDeliveryAddressesFromEstablishment(this.form.establishment_id);
+                } else {
+                    // Para otros motivos: establecimiento va en origen
+                    await this.getOriginAddresses(this.form.establishment_id);
+                }
+
+                if (isReasonType04) {
+                    await this.getAddressesOtherEstablishment(this.form.establishment_id);
                 }
             }
         },
@@ -1531,7 +1598,7 @@ export default {
             let it = form
             let attrib = it.attributes
             let qty = parseFloat(it.quantity)
-            this.form.packages_number -= qty
+            // this.form.packages_number -= qty  // Comentado: control manual del número de bultos
             let total_weight = 0
             if (attrib) {
                 for (const [key, value] of Object.entries(attrib)) {
@@ -1553,7 +1620,7 @@ export default {
             let qty = parseFloat(form.quantity)
             let it = form.item
             let attrib = it.attributes
-            this.form.packages_number += qty
+            // this.form.packages_number += qty  // Comentado: control manual del número de bultos
             let total_weight = 0
             if (attrib) {
                 for (const [key, value] of Object.entries(attrib)) {
@@ -1684,16 +1751,45 @@ export default {
                 return this.$message.error('Los productos no pueden tener cantidad 0.')
             }
 
-            this.form.origin = _.find(this.origin_addresses, { 'id': this.form.origin_address_id });
-
             // Crear una copia del formulario para enviar
             let formToSend = { ...this.form };
 
-            // Si es dirección personalizada (ID -1), crear el objeto delivery manualmente
-            if (this.form.delivery_address_id === -1 && this.form.transfer_reason_type_id === '04') {
+            // Manejar motivo '02' (compra): invertir origen y destino
+            if (this.form.transfer_reason_type_id === '02') {
+                // Para compra: origen es del proveedor (cliente), destino es del establecimiento
+                const originFromCustomer = _.find(this.origin_addresses, { 'id': this.form.origin_address_id });
+                const deliveryFromEstablishment = _.find(this.delivery_addresses, { 'id': this.form.delivery_address_id });
+
+                if (!originFromCustomer) {
+                    return this.$message.error('Debe seleccionar el punto de partida (proveedor)');
+                }
+                if (!deliveryFromEstablishment) {
+                    return this.$message.error('Debe seleccionar el punto de llegada (establecimiento)');
+                }
+
+                // Enviar como objetos JSON en lugar de IDs
+                formToSend.origin = {
+                    address: originFromCustomer.address,
+                    location_id: originFromCustomer.location_id,
+                    country_id: originFromCustomer.country_id || 'PE'
+                };
+                formToSend.delivery = {
+                    address: deliveryFromEstablishment.address,
+                    location_id: deliveryFromEstablishment.location_id,
+                    country_id: deliveryFromEstablishment.country_id || 'PE',
+                    code: deliveryFromEstablishment.code || '0000'
+                };
+                formToSend.origin_address_id = null;
+                formToSend.delivery_address_id = null;
+            }
+            // Si es dirección personalizada (ID -1) para motivo '04'
+            else if (this.form.delivery_address_id === -1 && this.form.transfer_reason_type_id === '04') {
                 if (!this.form.custom_delivery_address || this.form.custom_delivery_location_id.length !== 3) {
                     return this.$message.error('La dirección y ubigeo personalizados son obligatorios');
                 }
+
+                this.form.origin = _.find(this.origin_addresses, { 'id': this.form.origin_address_id });
+
                 formToSend.delivery = {
                     address: this.form.custom_delivery_address,
                     location_id: this.form.custom_delivery_location_id[2], // distrito
@@ -1702,7 +1798,10 @@ export default {
                 };
                 // Establecer delivery_address_id como NULL para la BD
                 formToSend.delivery_address_id = null;
-            } else {
+            }
+            // Otros motivos: usar los datos normalmente
+            else {
+                this.form.origin = _.find(this.origin_addresses, { 'id': this.form.origin_address_id });
                 formToSend.delivery = _.find(this.delivery_addresses, { 'id': this.form.delivery_address_id });
             }
 
@@ -1822,6 +1921,18 @@ export default {
         },
         async getAddressesOtherEstablishment(establishment_id) {
             await this.$http.get(`/${this.resource}/get_addresses_other_establishments/${establishment_id}`)
+                .then(response => {
+                    this.delivery_addresses = response.data;
+                });
+        },
+        async getOriginAddressesFromCustomer(customer_id) {
+            await this.$http.get(`/dispatch_addresses/get_by_person/${customer_id}`)
+                .then(response => {
+                    this.origin_addresses = response.data;
+                });
+        },
+        async getDeliveryAddressesFromEstablishment(establishment_id) {
+            await this.$http.get(`/${this.resource}/get_origin_addresses/${establishment_id}`)
                 .then(response => {
                     this.delivery_addresses = response.data;
                 });

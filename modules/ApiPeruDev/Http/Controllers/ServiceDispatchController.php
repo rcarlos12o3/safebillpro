@@ -42,17 +42,33 @@ class ServiceDispatchController extends Controller
 
     public function send($external_id)
     {
+        Log::info("========== SERVICECONTROLLER SEND START ==========");
+        Log::info("External ID: " . $external_id);
+
         DB::connection('tenant')->beginTransaction();
         try {
             $dispatch = Dispatch::query()
                 ->select('id', 'document_type_id', 'series', 'number', 'filename', 'ticket')
                 ->where('external_id', $external_id)->first();
+
+            Log::info("Dispatch found: " . ($dispatch ? "YES" : "NO"));
+
             if ($dispatch) {
+                Log::info("Dispatch filename: " . $dispatch->filename);
+
                 $xml_signed = (new StorageHelper())->getXmlSigned($dispatch->filename);
 
-                $facturalo = new Facturalo();
-                $hasPseSend = $facturalo->hasPseSend();
-                if($hasPseSend){
+                $company = Company::first();
+                $isDemo = $company->soap_type_id != '02';
+
+                Log::info("Is Demo: " . ($isDemo ? "YES (usar Nubefact)" : "NO (usar SUNAT directo)"));
+
+                // Para GUÍAS:
+                // - MODO DEMO: siempre usar Nubefact (via GiorService)
+                // - MODO PRODUCCIÓN: siempre usar SUNAT directo (las guías NO usan PSE/OSE)
+                if($isDemo){
+                    Log::info("Entrando a flujo Nubefact (modo demo)...");
+
                     $giorService = new GiorService();
                     $response = $giorService->sendXmlSigned($dispatch->filename, $xml_signed, true);
                     // dd($response);
@@ -125,13 +141,23 @@ class ServiceDispatchController extends Controller
         if ($dispatch) {
             $storage = new StorageHelper();
 
-            $facturalo = new Facturalo();
-            $hasPseSend = $facturalo->hasPseSend();
-            if($hasPseSend){
+            $company = Company::first();
+            $isDemo = $company->soap_type_id != '02';
+
+            // Para GUÍAS:
+            // - MODO DEMO: usar Nubefact (via GiorService)
+            // - MODO PRODUCCIÓN: usar SUNAT directo (las guías NO usan PSE/OSE)
+            if($isDemo){
                 $giorService = new GiorService();
-                $response = $giorService->querySummary($dispatch->filename);
+                // Para Nubefact (demo), usar el ticket. Para ValidaPSE (producción), usar filename
+                $company = Company::first();
+                $isDemo = $company->soap_type_id != '02';
+                $queryParam = $isDemo ? $dispatch->ticket : $dispatch->filename;
+
+                $response = $giorService->querySummary($queryParam);
                 if(!$response['success']) {
-                    throw new Exception("PSE. TICKET - Code: {$response['code']}; Description: {$response['message']}");
+                    $errorMessage = is_array($response['message']) ? json_encode($response['message']) : $response['message'];
+                    throw new Exception("PSE. TICKET - Code: {$response['code']}; Description: {$errorMessage}");
                 } else {
                     $message = $response['message'];
                     $state_type_id = '05';
