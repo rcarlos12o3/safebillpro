@@ -432,16 +432,6 @@ class BulkUploadController extends Controller
             $row = $record->row_data;
             $item = Item::find($row['item_id']);
 
-            // DEBUG: Ver qué datos tiene row_data
-            \Log::info('=== DEBUG BULK UPLOAD PRICE ===', [
-                'item_id' => $row['item_id'],
-                'item_description' => $item->description,
-                'row_data_keys' => array_keys($row),
-                'row_item_price' => $row['item_price'] ?? 'NO EXISTE',
-                'item_sale_unit_price' => $item->sale_unit_price,
-                'full_row_data' => $row
-            ]);
-
             // Obtener tipo de afectación del IGV del producto
             $affectationIgvType = $item->sale_affectation_igv_type_id ?? '10';
 
@@ -453,26 +443,44 @@ class BulkUploadController extends Controller
                 $unit_price = floatval($item->sale_unit_price);
             }
 
-            \Log::info('=== PRECIO FINAL USADO ===', [
-                'unit_price' => $unit_price,
-                'viene_de_excel' => isset($row['precio_unit']) && !empty($row['precio_unit']) && floatval($row['precio_unit']) > 0
-            ]);
+            // Verificar si hay un total proporcionado en el Excel
+            $providedTotal = isset($row['total']) && !empty($row['total']) ? floatval($row['total']) : null;
 
             // Calcular según tipo de afectación
-            if ($affectationIgvType === '10') {
-                // GRAVADO: El precio incluye IGV, hay que separarlo
-                $unit_value = round($unit_price / 1.18, 10);
-                $subtotal = round($unit_value * $quantity, 2);
-                $igv = round($subtotal * 0.18, 2);
-                $item_total = round($subtotal + $igv, 2);
-                $has_igv = true;
+            if ($providedTotal !== null) {
+                // Usar el total proporcionado del Excel y calcular hacia atrás
+                $item_total = round($providedTotal, 2);
+
+                if ($affectationIgvType === '10') {
+                    // GRAVADO: Separar el IGV del total proporcionado
+                    $subtotal = round($item_total / 1.18, 2);
+                    $igv = round($item_total - $subtotal, 2);
+                    $unit_value = round($subtotal / $quantity, 10);
+                    $has_igv = true;
+                } else {
+                    // EXONERADO/INAFECTO: No hay IGV
+                    $subtotal = $item_total;
+                    $igv = 0;
+                    $unit_value = round($subtotal / $quantity, 10);
+                    $has_igv = false;
+                }
             } else {
-                // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
-                $unit_value = $unit_price;
-                $subtotal = round($unit_value * $quantity, 2);
-                $igv = 0;
-                $item_total = $subtotal;
-                $has_igv = false;
+                // No hay total proporcionado, calcular automáticamente
+                if ($affectationIgvType === '10') {
+                    // GRAVADO: El precio incluye IGV, hay que separarlo
+                    $unit_value = round($unit_price / 1.18, 10);
+                    $subtotal = round($unit_value * $quantity, 2);
+                    $igv = round($subtotal * 0.18, 2);
+                    $item_total = round($subtotal + $igv, 2);
+                    $has_igv = true;
+                } else {
+                    // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
+                    $unit_value = $unit_price;
+                    $subtotal = round($unit_value * $quantity, 2);
+                    $igv = 0;
+                    $item_total = $subtotal;
+                    $has_igv = false;
+                }
             }
 
             // Acumular totales del documento

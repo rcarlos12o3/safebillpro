@@ -214,9 +214,23 @@
                             </template>
                         </el-table-column>
                         <el-table-column
-                            prop="data.cantidad"
+                            label="Precio Unit."
+                            width="110"
+                            align="right">
+                            <template slot-scope="scope">
+                                <span v-if="scope.row.item_price !== undefined">
+                                    S/ {{ Number(scope.row.item_price).toFixed(2) }}
+                                </span>
+                                <span v-else class="text-muted">-</span>
+                            </template>
+                        </el-table-column>
+                        <el-table-column
                             label="Cantidad"
-                            width="90">
+                            width="100"
+                            align="right">
+                            <template slot-scope="scope">
+                                {{ scope.row.cantidad_display !== undefined ? scope.row.cantidad_display : scope.row.data.cantidad }}
+                            </template>
                         </el-table-column>
                         <el-table-column
                             label="Stock"

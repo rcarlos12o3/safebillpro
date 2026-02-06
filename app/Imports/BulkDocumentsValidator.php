@@ -118,42 +118,54 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
         if (!isset($row['cantidad']) || empty($row['cantidad']) || $row['cantidad'] <= 0) {
             $validatedRow['is_valid'] = false;
             $validatedRow['errors'][] = 'CANTIDAD debe ser mayor a 0';
+        } else {
+            // Redondear cantidad a 8 decimales para evitar problemas de precisión de punto flotante
+            $validatedRow['cantidad_display'] = round(floatval($row['cantidad']), 8);
         }
 
-        // Validar TOTAL si está presente
-        if (isset($row['total']) && !empty($row['total']) && isset($validatedRow['item_price'])) {
-            $expectedTotal = round($validatedRow['item_price'] * $row['cantidad'], 2);
-            $providedTotal = round($row['total'], 2);
-
-            if (abs($expectedTotal - $providedTotal) > 0.01) {
-                $validatedRow['is_valid'] = false;
-                $validatedRow['errors'][] = "TOTAL no coincide. Esperado: {$expectedTotal}, Recibido: {$providedTotal}";
-            }
-        }
-
-        // Calcular totales según tipo de afectación IGV
+        // Calcular o usar totales según tipo de afectación IGV
         if (isset($validatedRow['item_price']) && isset($row['cantidad']) && isset($item)) {
             $unit_price = floatval($validatedRow['item_price']);
             $quantity = floatval($row['cantidad']);
             $affectationIgvType = $item->sale_affectation_igv_type_id ?? '10';
 
-            if ($affectationIgvType === '10') {
-                // GRAVADO: El precio incluye IGV, separarlo
-                $unit_value = round($unit_price / 1.18, 10);
-                $subtotal = round($unit_value * $quantity, 2);
-                $igv = round($subtotal * 0.18, 2);
-                $total = round($subtotal + $igv, 2);
+            // Si el usuario proporcionó un TOTAL en el Excel, usarlo
+            $providedTotal = isset($row['total']) && !empty($row['total']) ? floatval($row['total']) : null;
+
+            if ($providedTotal !== null) {
+                // Usar el total proporcionado y calcular hacia atrás
+                $total = round($providedTotal, 2);
+
+                if ($affectationIgvType === '10') {
+                    // GRAVADO: Separar el IGV del total proporcionado
+                    $subtotal = round($total / 1.18, 2);
+                    $igv = round($total - $subtotal, 2);
+                } else {
+                    // EXONERADO/INAFECTO: No hay IGV
+                    $subtotal = $total;
+                    $igv = 0;
+                }
             } else {
-                // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
-                $unit_value = $unit_price;
-                $subtotal = round($unit_value * $quantity, 2);
-                $igv = 0;
-                $total = $subtotal;
+                // No hay total proporcionado, calcular automáticamente
+                if ($affectationIgvType === '10') {
+                    // GRAVADO: El precio incluye IGV, separarlo
+                    $unit_value = round($unit_price / 1.18, 10);
+                    $subtotal = round($unit_value * $quantity, 2);
+                    $igv = round($subtotal * 0.18, 2);
+                    $total = round($subtotal + $igv, 2);
+                } else {
+                    // EXONERADO ('20') o INAFECTO ('30'): El precio NO incluye IGV
+                    $unit_value = $unit_price;
+                    $subtotal = round($unit_value * $quantity, 2);
+                    $igv = 0;
+                    $total = $subtotal;
+                }
             }
 
             $validatedRow['calculated_total'] = $total;
             $validatedRow['calculated_subtotal'] = $subtotal;
             $validatedRow['calculated_igv'] = $igv;
+            $validatedRow['provided_total'] = $providedTotal; // Guardar si vino del Excel
         }
     }
 
