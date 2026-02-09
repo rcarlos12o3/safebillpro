@@ -550,16 +550,22 @@ class BulkUploadController extends Controller
         // Considerar tanto el último documento creado como la configuración inicial de la serie
         $lastNumberFromDocuments = Document::getLastNumberBySerie($serie->number);
 
-        // Verificar si existe una configuración inicial para la serie
-        $seriesConfiguration = \Modules\Document\Models\SeriesConfiguration::where('series', $serie->number)
-            ->where('document_type_id', $serie->document_type_id)
-            ->first();
-
-        // Usar el mayor entre la configuración inicial y el último documento
-        if ($seriesConfiguration && $seriesConfiguration->number > $lastNumberFromDocuments) {
-            $nextNumber = (int)$seriesConfiguration->number + 1;
-        } else {
+        // Si ya hay documentos con esta serie, usar el siguiente número
+        if ($lastNumberFromDocuments > 0) {
             $nextNumber = $lastNumberFromDocuments + 1;
+        } else {
+            // No hay documentos previos, verificar si hay configuración inicial
+            $seriesConfiguration = \Modules\Document\Models\SeriesConfiguration::where('series', $serie->number)
+                ->where('document_type_id', $serie->document_type_id)
+                ->first();
+
+            if ($seriesConfiguration) {
+                // Hay configuración: el número configurado es el PRIMERO a usar (sin incrementar)
+                $nextNumber = (int)$seriesConfiguration->number;
+            } else {
+                // No hay configuración, empezar desde 1
+                $nextNumber = 1;
+            }
         }
 
         // Usar el helper EstablishmentInput para construir los datos del establecimiento correctamente

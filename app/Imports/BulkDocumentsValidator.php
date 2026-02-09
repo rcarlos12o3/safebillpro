@@ -543,15 +543,22 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
 
             $lastNumberFromDocuments = $lastDocument ? $lastDocument->number : 0;
 
-            // Verificar si hay una configuración de serie que define un número inicial
-            $seriesConfiguration = \Modules\Document\Models\SeriesConfiguration::where('series', $serieNumber)
-                ->first();
-
-            // Usar el mayor entre el último número de documentos y el número configurado en series_configurations
-            if ($seriesConfiguration && $seriesConfiguration->number > $lastNumberFromDocuments) {
-                $this->seriesLastNumbers[$serieNumber] = (int)$seriesConfiguration->number;
-            } else {
+            // Si ya hay documentos con esta serie, usar el último número
+            if ($lastNumberFromDocuments > 0) {
                 $this->seriesLastNumbers[$serieNumber] = $lastNumberFromDocuments;
+            } else {
+                // No hay documentos previos, verificar si hay configuración inicial
+                $seriesConfiguration = \Modules\Document\Models\SeriesConfiguration::where('series', $serieNumber)
+                    ->first();
+
+                if ($seriesConfiguration) {
+                    // Hay configuración: el número configurado es el PRIMERO a usar
+                    // Retornamos uno menos porque calculateReferentialNumber() incrementará
+                    $this->seriesLastNumbers[$serieNumber] = (int)$seriesConfiguration->number - 1;
+                } else {
+                    // No hay configuración, empezar desde 0 (siguiente será 1)
+                    $this->seriesLastNumbers[$serieNumber] = 0;
+                }
             }
         }
 
@@ -664,6 +671,7 @@ class BulkDocumentsValidator implements ToCollection, WithHeadingRow
                 // (esto ya está garantizado por la agrupación, pero podemos agregar validaciones adicionales)
             }
         }
+        unset($document); // Liberar la referencia para evitar bugs
 
         // Propagar el número referencial a cada fila validada
         foreach ($this->groupedDocuments as $groupKey => $document) {
