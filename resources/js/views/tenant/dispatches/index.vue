@@ -43,6 +43,11 @@
                                   :class="{'bg-secondary': (row.state_type_id === '01'), 'bg-info': (row.state_type_id === '03'), 'bg-success': (row.state_type_id === '05'), 'bg-secondary': (row.state_type_id === '07'), 'bg-dark': (row.state_type_id === '09')}">{{
                                     row.state_type_description
                                 }}</span>
+                            <span v-if="row.sunat_error_message"
+                                  class="d-block text-danger small mt-1"
+                                  style="font-size: 11px; line-height: 1.3;">
+                                <i class="fa fa-exclamation-circle"></i> {{ row.sunat_error_message }}
+                            </span>
                         </td>
                         <td class="text-center">{{ row.date_of_shipping }}</td>
 

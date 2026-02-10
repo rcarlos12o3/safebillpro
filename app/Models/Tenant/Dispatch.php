@@ -521,7 +521,14 @@ class Dispatch extends ModelTenant
 
         $has_cdr = false;
 
+        // Mostrar CDR solo cuando realmente existe: Aceptado (05), Aceptado con observaciones (07)
+        // Para rechazados (09), SUNAT no siempre genera CDR, se debe verificar has_cdr en BD
         if (in_array($this->state_type_id, ['05', '07'])) {
+            $has_cdr = true;
+        }
+
+        // Si el dispatch tiene has_cdr=true en BD (guardado al procesar respuesta SUNAT), mostrarlo
+        if ($this->has_cdr) {
             $has_cdr = true;
         }
 
@@ -614,6 +621,7 @@ class Dispatch extends ModelTenant
             'created_at' => $this->created_at->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i:s'),
             'soap_shipping_response' => $this->soap_shipping_response,
+            'sunat_error_message' => $this->getSunatErrorMessage(),
             'btn_generate_document' => $this->generate_document || $this->reference_document_id || !$btn_generate_document ? false : true,
             'transfer_reason_type' => $this->transfer_reason_type,
             'transfer_reason_description' => $this->transfer_reason_description,
@@ -660,6 +668,28 @@ class Dispatch extends ModelTenant
             return false;
         }
         return $temp->sent;
+    }
+
+    /**
+     * Get SUNAT error message for rejected dispatches
+     *
+     * @return string|null
+     */
+    public function getSunatErrorMessage()
+    {
+        $response = $this->soap_shipping_response;
+
+        if (empty($response)) {
+            return null;
+        }
+
+        // Si está rechazado (estado 09) y tiene mensaje de error
+        if ($this->state_type_id === '09' && isset($response->description)) {
+            $code = isset($response->code) ? "{$response->code} - " : '';
+            return $code . $response->description;
+        }
+
+        return null;
     }
 
     public function getDataAffectedDocumentAttribute($value)

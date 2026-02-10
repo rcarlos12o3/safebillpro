@@ -179,9 +179,20 @@ class ServiceDispatchController extends Controller
                         $qr_url = $res['cdr_data']['qr_url'];
                     }
 
+                    // Preparar soap_shipping_response para guardar el mensaje
+                    $soap_response = null;
+                    if ($state_type_id === '09' && !empty($message)) {
+                        $soap_response = [
+                            'sent' => true,
+                            'code' => isset($response['code']) ? $response['code'] : 'PSE_ERROR',
+                            'description' => $message
+                        ];
+                    }
+
                     $dispatch->has_cdr = $has_cdr;
                     $dispatch->state_type_id = $state_type_id;
                     $dispatch->qr_url = $qr_url;
+                    $dispatch->soap_shipping_response = $soap_response;
                     $dispatch->save();
 
                     DB::connection('tenant')->commit();
@@ -238,11 +249,22 @@ class ServiceDispatchController extends Controller
                         $qr_url = $res['cdr_data']['qr_url'];
                     }
 
+                    // Preparar soap_shipping_response para guardar el mensaje de error
+                    $soap_response = null;
+                    if ($state_type_id === '09' && !empty($message)) {
+                        $soap_response = [
+                            'sent' => true,
+                            'code' => isset($res['codRespuesta']) ? $res['codRespuesta'] : '99',
+                            'description' => $message
+                        ];
+                    }
+
                     Dispatch::query()
                         ->where('id', $dispatch->id)
                         ->update([
                             'state_type_id' => $state_type_id,
-                            'qr_url' => $qr_url
+                            'qr_url' => $qr_url,
+                            'soap_shipping_response' => $soap_response ? json_encode($soap_response) : null
                         ]);
 
                     $record = Dispatch::query()

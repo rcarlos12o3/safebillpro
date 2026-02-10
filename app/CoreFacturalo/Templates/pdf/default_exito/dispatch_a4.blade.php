@@ -77,9 +77,11 @@
             <td>Teléfono:{{ $customer->telephone }}</td>
         </tr>
     @endif
-    <tr>
-        <td>Vendedor: {{ $document->user->name }}</td>
-    </tr>
+    @if(isset($configurationInPdf) && $configurationInPdf->show_seller_in_pdf)
+        <tr>
+            <td>Vendedor: {{ $document->user->name }}</td>
+        </tr>
+    @endif
     </tbody>
 </table>
 <table class="full-width border-box mt-10 mb-10">
