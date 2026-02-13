@@ -4660,22 +4660,15 @@ export default {
         },
         changeCreditFeeDate(index)
         {
-            console.log('=== changeCreditFeeDate LLAMADO ===');
-            console.log('Index:', index);
-            console.log('payment_condition_id:', this.form.payment_condition_id);
-            console.log('fee length:', this.form.fee.length);
-
             // Para crédito simple (payment_condition_id = '02'),
             // la fecha de vencimiento debe ser igual a la fecha de la primera cuota
             if (this.form.payment_condition_id === '02' && index === 0 && this.form.fee.length > 0) {
-                console.log('>>> Actualizando date_of_due con primera cuota:', this.form.fee[0].date);
                 this.setDateOfDue(this.form.fee[0].date);
             } else {
                 // Mantener lógica original para otros casos (usa última cuota)
                 const last_index = this.getLastIndexFee()
                 if(last_index === index)
                 {
-                    console.log('>>> Actualizando date_of_due con última cuota:', this.getLastDateFee(last_index));
                     this.setDateOfDue(this.getLastDateFee(last_index))
                 }
             }
@@ -4956,24 +4949,17 @@ export default {
     watch: {
         'form.fee': {
             handler: function(newFee) {
-                console.log('Watcher form.fee disparado');
-                console.log('payment_condition_id:', this.form.payment_condition_id);
-                console.log('fee length:', newFee.length);
-
                 // Para crédito simple (payment_condition_id = '02'),
                 // sincronizar fecha de vencimiento con fecha de la primera cuota
                 if (this.form.payment_condition_id === '02' && newFee.length > 0 && newFee[0].date) {
-                    console.log('Actualizando date_of_due a:', newFee[0].date);
                     this.form.date_of_due = newFee[0].date;
                 }
             },
             deep: true
         },
         'form.payment_condition_id': function(newValue) {
-            console.log('Watcher payment_condition_id disparado:', newValue);
             // Cuando cambia a crédito simple y hay una cuota, sincronizar fecha
             if (newValue === '02' && this.form.fee.length > 0 && this.form.fee[0].date) {
-                console.log('Actualizando date_of_due a:', this.form.fee[0].date);
                 this.form.date_of_due = this.form.fee[0].date;
             }
         }
