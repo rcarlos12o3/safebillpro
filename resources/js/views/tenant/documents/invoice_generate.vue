@@ -4660,11 +4660,17 @@ export default {
         },
         changeCreditFeeDate(index)
         {
-            const last_index = this.getLastIndexFee()
-
-            if(last_index === index)
-            {
-                this.setDateOfDue(this.getLastDateFee(last_index))
+            // Para crédito simple (payment_condition_id = '02'),
+            // la fecha de vencimiento debe ser igual a la fecha de la primera cuota
+            if (this.form.payment_condition_id === '02' && index === 0 && this.form.fee.length > 0) {
+                this.setDateOfDue(this.form.fee[0].date);
+            } else {
+                // Mantener lógica original para otros casos (usa última cuota)
+                const last_index = this.getLastIndexFee()
+                if(last_index === index)
+                {
+                    this.setDateOfDue(this.getLastDateFee(last_index))
+                }
             }
         },
         getLastIndexFee()
@@ -4939,6 +4945,24 @@ export default {
             return url;
         }
 
+    },
+    watch: {
+        'form.fee': {
+            handler: function(newFee) {
+                // Para crédito simple (payment_condition_id = '02'),
+                // sincronizar fecha de vencimiento con fecha de la primera cuota
+                if (this.form.payment_condition_id === '02' && newFee.length > 0 && newFee[0].date) {
+                    this.form.date_of_due = newFee[0].date;
+                }
+            },
+            deep: true
+        },
+        'form.payment_condition_id': function(newValue) {
+            // Cuando cambia a crédito simple y hay una cuota, sincronizar fecha
+            if (newValue === '02' && this.form.fee.length > 0 && this.form.fee[0].date) {
+                this.form.date_of_due = this.form.fee[0].date;
+            }
+        }
     }
 }
 </script>
