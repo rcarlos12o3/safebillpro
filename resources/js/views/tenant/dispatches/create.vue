@@ -1305,10 +1305,19 @@ export default {
                 if (isNaN(this.quantity)) {
                     this.quantity = 1;
                 }
-                const item = this.items.find((item) => item.id == this.current_item)
+                let item = this.items.find((item) => item.id == this.current_item)
 
-                // Si es producto manual, sobrescribir la descripción
+                // Si es producto manual, crear un clon con ID único
                 if (this.various_item) {
+                    // Guardar ID original antes de clonar
+                    const originalItemId = item.id;
+                    // Crear clon profundo del item
+                    item = JSON.parse(JSON.stringify(item));
+                    // Asignar ID único temporal para evitar duplicados en el frontend
+                    item.id = `manual_${Date.now()}_${Math.random()}`;
+                    // Guardar el ID original del producto para el backend
+                    item.original_item_id = originalItemId;
+                    // Sobrescribir la descripción
                     item.description = this.item_description;
                 }
 
@@ -1564,7 +1573,7 @@ export default {
                 description: it.description,
                 internal_id: it.internal_id,
                 quantity: form.quantity,
-                item_id: it.id,
+                item_id: it.original_item_id || it.id, // Usar original_item_id si existe (producto manual)
                 unit_type_id: it.unit_type_id,
                 id: it.id,
                 IdLoteSelected: it.IdLoteSelected || '',
