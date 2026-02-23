@@ -1812,6 +1812,11 @@ export default {
             else {
                 this.form.origin = _.find(this.origin_addresses, { 'id': this.form.origin_address_id });
                 formToSend.delivery = _.find(this.delivery_addresses, { 'id': this.form.delivery_address_id });
+
+                // Si delivery_address_id es un string (como 'est_3'), establecerlo como null
+                if (typeof this.form.delivery_address_id === 'string' && this.form.delivery_address_id.startsWith('est_')) {
+                    formToSend.delivery_address_id = null;
+                }
             }
 
             // this.form.origin = this.origin;

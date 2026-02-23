@@ -1,9 +1,33 @@
 @php
-    
+
+    // Variables para DespatchSupplierParty (remitente) y DeliveryCustomerParty (destinatario)
+    $supplier_number = $company->number;
+    $supplier_name = $company->name;
+    $supplier_identity_type = '6';
+
+    // Por defecto, destinatario = customer (para ventas, exportación, etc.)
+    $receiver_number = !empty($document['customer_number']) ? $document['customer_number'] : null;
+    $receiver_name = !empty($document['customer_name']) ? $document['customer_name'] : null;
+    $receiver_identity_type = !empty($document['customer_identity_document_type_id']) ? $document['customer_identity_document_type_id'] : null;
+
+    // MOTIVO 04: Traslado entre establecimientos (remitente y destinatario = empresa)
     if($document['transfer_reason_type_id']==='04'){
-        $document['customer_identity_document_type_id'] = '6';
-        $document['customer_number'] = $document['company_number'];
-        $document['customer_name'] = $document['company_name'];
+        $receiver_identity_type = '6';
+        $receiver_number = $company->number;
+        $receiver_name = $company->name;
+    }
+
+    // MOTIVO 02: Compra - Remitente y destinatario son la empresa (traslado para incorporación al patrimonio)
+    if($document['transfer_reason_type_id']==='02'){
+        // Remitente = empresa (quien documenta el traslado)
+        $supplier_number = $company->number;
+        $supplier_name = $company->name;
+        $supplier_identity_type = '6';
+
+        // Destinatario = empresa (quien recibe/incorpora al patrimonio)
+        $receiver_identity_type = '6';
+        $receiver_number = $company->number;
+        $receiver_name = $company->name;
     }
 
 @endphp
@@ -41,10 +65,10 @@
         <cbc:Note>{{ config('configuration.signature_note') }}</cbc:Note>
         <cac:SignatoryParty>
             <cac:PartyIdentification>
-                <cbc:ID>{{ $document['company_number'] }}</cbc:ID>
+                <cbc:ID>{{ $company->number }}</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyName>
-                <cbc:Name><![CDATA[{{ $document['company_name'] }}]]></cbc:Name>
+                <cbc:Name><![CDATA[{{ $company->name }}]]></cbc:Name>
             </cac:PartyName>
         </cac:SignatoryParty>
         <cac:DigitalSignatureAttachment>
@@ -59,10 +83,10 @@
                 <cbc:ID schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06"
                         schemeAgencyName="PE:SUNAT"
                         schemeName="Documento de Identidad"
-                        schemeID="6">{{ $document['company_number'] }}</cbc:ID>
+                        schemeID="{{ $supplier_identity_type }}">{{ $supplier_number }}</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyLegalEntity>
-                <cbc:RegistrationName><![CDATA[{{ $document['company_name'] }}]]></cbc:RegistrationName>
+                <cbc:RegistrationName><![CDATA[{{ $supplier_name }}]]></cbc:RegistrationName>
             </cac:PartyLegalEntity>
         </cac:Party>
     </cac:DespatchSupplierParty>
@@ -72,10 +96,10 @@
                 <cbc:ID schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06"
                         schemeAgencyName="PE:SUNAT"
                         schemeName="Documento de Identidad"
-                        schemeID="{{ $document['customer_identity_document_type_id'] }}">{{ $document['customer_number'] }}</cbc:ID>
+                        schemeID="{{ $receiver_identity_type }}">{{ $receiver_number }}</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyLegalEntity>
-                <cbc:RegistrationName><![CDATA[{{ $document['customer_name'] }}]]></cbc:RegistrationName>
+                <cbc:RegistrationName><![CDATA[{{ $receiver_name }}]]></cbc:RegistrationName>
             </cac:PartyLegalEntity>
         </cac:Party>
     </cac:DeliveryCustomerParty>
@@ -171,15 +195,15 @@
                 <cbc:ID schemeAgencyName="PE:INEI"
                         schemeName="Ubigeos">{{ $document['delivery_location_id'] }}</cbc:ID>
                 <!-- CODIGO DE ESTABLECIMIENTO ANEXO DE LLEGADA -->
-                @if($document['transfer_reason_type_id'] === '04')
-                {{-- Para motivo 04 (traslado entre establecimientos), siempre enviar código de establecimiento --}}
+                @if($document['transfer_reason_type_id'] === '04' || $document['transfer_reason_type_id'] === '02')
+                {{-- Para motivo 04 (traslado entre establecimientos) y 02 (compra), el destinatario es la empresa --}}
                 <cbc:AddressTypeCode listAgencyName="PE:SUNAT"
                                      listName="Establecimientos anexos"
-                                     listID="{{ $document['company_number'] }}">{{ $document['delivery_code'] ?? '0000' }}</cbc:AddressTypeCode>
-                @elseif($document['customer_identity_document_type_id'] === '6')
+                                     listID="{{ $receiver_number }}">{{ $document['delivery_code'] ?? '0000' }}</cbc:AddressTypeCode>
+                @elseif($receiver_identity_type === '6')
                 <cbc:AddressTypeCode listAgencyName="PE:SUNAT"
                                      listName="Establecimientos anexos"
-                                     listID="{{ $document['customer_number'] }}">{{ $document['delivery_code'] }}</cbc:AddressTypeCode>
+                                     listID="{{ $receiver_number }}">{{ $document['delivery_code'] }}</cbc:AddressTypeCode>
                 @endif
                 <cac:AddressLine>
                     <cbc:Line><![CDATA[{{ $document['delivery_address'] }}]]></cbc:Line>
@@ -192,9 +216,12 @@
                     <cbc:ID schemeAgencyName="PE:INEI"
                             schemeName="Ubigeos">{{ $document['origin_location_id'] }}</cbc:ID>
                     <!-- CODIGO DE ESTABLECIMIENTO ANEXO DE PARTIDA -->
+                    @if($document['transfer_reason_type_id'] !== '02')
+                    {{-- Para motivos diferentes a 02 (compra), enviar código de establecimiento --}}
                     <cbc:AddressTypeCode listName="Establecimientos anexos"
                                          listAgencyName="PE:SUNAT"
-                                         listID="{{ $document['company_number'] }}">0000</cbc:AddressTypeCode>
+                                         listID="{{ $supplier_number }}">{{ $document['origin_code'] ?? '0000' }}</cbc:AddressTypeCode>
+                    @endif
                     <!-- DIRECCION COMPLETA Y DETALLADA DE PARTIDA -->
                     <cac:AddressLine>
                         <cbc:Line><![CDATA[{{ $document['origin_address'] }}]]></cbc:Line>

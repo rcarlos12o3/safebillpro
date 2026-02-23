@@ -307,10 +307,10 @@ class ServiceDispatchController extends Controller
 
     public function createXmlUnsigned($document)
     {
+        $company = Company::query()->first();
         $template = new Template();
         $template_name = ($document['document_type_id'] === '31')?'dispatch_carrier':'dispatch';
-        Log::info($template_name);
-        $xmlUnsigned = XmlFormat::format($template->xml($template_name, null, $document));
+        $xmlUnsigned = XmlFormat::format($template->xml($template_name, $company, $document));
         $this->uploadStorage($document['filename'], $xmlUnsigned, 'unsigned');
 
         return $xmlUnsigned;
