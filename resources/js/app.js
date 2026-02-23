@@ -518,6 +518,13 @@ Vue.mixin({
             const status = response.status;
             if (status === 422) {
                 this.errors = response.data
+                // Mostrar mensaje de error de validación
+                const firstError = Object.values(response.data)[0];
+                const errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+                this.$message({
+                    type: 'error',
+                    message: errorMessage || 'Error de validación'
+                });
             }
             if (status === 500) {
                 this.$message({

@@ -106,7 +106,7 @@ class HotelRoomController extends Controller
 	 * @param int $id
 	 * @return Response
 	 */
-	public function update(HotelFloorRequest $request, $id)
+	public function update(HotelRoomRequest $request, $id)
 	{
 		$room = HotelRoom::findOrFail($id);
 		$room = $room->fill($request->only('description', 'active', 'name', 'hotel_category_id', 'hotel_floor_id','establishment_id'));
