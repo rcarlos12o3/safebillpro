@@ -671,7 +671,7 @@ class Dispatch extends ModelTenant
     }
 
     /**
-     * Get SUNAT error message for rejected dispatches
+     * Get SUNAT error message for rejected or observed dispatches
      *
      * @return string|null
      */
@@ -683,8 +683,8 @@ class Dispatch extends ModelTenant
             return null;
         }
 
-        // Si está rechazado (estado 09) y tiene mensaje de error
-        if ($this->state_type_id === '09' && isset($response->description)) {
+        // Si está rechazado (estado 09) u observado (estado 07) y tiene mensaje de error
+        if (in_array($this->state_type_id, ['07', '09']) && isset($response->description)) {
             $code = isset($response->code) ? "{$response->code} - " : '';
             return $code . $response->description;
         }
