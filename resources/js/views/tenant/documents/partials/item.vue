@@ -32,6 +32,17 @@
                                     maxlength="500">
                                 </el-input>
                             </div>
+                            <div class="form-group">
+                                <label class="control-label">Unidad de Medida</label>
+                                <el-select v-model="form.item.unit_type_id" filterable placeholder="Seleccionar unidad">
+                                    <el-option
+                                        v-for="option in unit_types"
+                                        :key="option.id"
+                                        :label="`${option.id} - ${option.description}`"
+                                        :value="option.id">
+                                    </el-option>
+                                </el-select>
+                            </div>
                         </template>
                         <template v-else>
                             <div id="custom-select"
@@ -180,7 +191,7 @@
                              class="form-group">
                             <label class="control-label">Afectación Igv</label>
                             <el-select v-model="form.affectation_igv_type_id"
-                                       :disabled="!change_affectation_igv_type_id"
+                                       :disabled="!change_affectation_igv_type_id && !various_item"
                                        filterable>
                                 <el-option
                                     v-for="option in affectation_igv_types"
@@ -801,6 +812,7 @@ export default {
             input_search_by_serie: '',
             various_item: false,
             various_item_barcode: 'VARIOUS_ITEM',
+            unit_types: [],
         }
     },
     created() {
@@ -995,6 +1007,7 @@ export default {
             this.$http.get(`/${this.resource}/item/tables`).then(response => {
                 let data = response.data
                 this.all_items = data.items
+                this.unit_types = data.unit_types
                 this.operation_types = data.operation_types
                 this.all_affectation_igv_types = data.affectation_igv_types
                 this.system_isc_types = data.system_isc_types
@@ -1992,6 +2005,7 @@ export default {
                     this.various_item = false;
                 } else {
                     this.form.item.description = '';
+                    this.change_affectation_igv_type_id = true;
                     this.$refs.inputItemDescription.$el.getElementsByTagName('input')[0].focus();
                     return;
                 }

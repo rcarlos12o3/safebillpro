@@ -35,6 +35,7 @@ use App\Models\Tenant\Catalogs\NoteDebitType;
 use App\Models\Tenant\Catalogs\OperationType;
 use App\Models\Tenant\Catalogs\PriceType;
 use App\Models\Tenant\Catalogs\SystemIscType;
+use App\Models\Tenant\Catalogs\UnitType;
 use App\Models\Tenant\CatItemSize;
 use App\Models\Tenant\Company;
 use App\Models\Tenant\Configuration;
@@ -317,6 +318,7 @@ class DocumentController extends Controller
         // $items = $this->table('items');
         $items = SearchItemController::getItemsToDocuments();
         $categories = [];
+        $unit_types = UnitType::whereActive()->orderByDescription()->get();
         $affectation_igv_types = AffectationIgvType::whereActive()->get();
         $system_isc_types = SystemIscType::whereActive()->get();
         $price_types = PriceType::whereActive()->get();
@@ -358,6 +360,7 @@ class DocumentController extends Controller
         return compact(
             'items',
             'categories',
+            'unit_types',
             'affectation_igv_types',
             'system_isc_types',
             'price_types',
