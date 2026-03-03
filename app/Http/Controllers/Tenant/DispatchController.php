@@ -493,6 +493,7 @@ class DispatchController extends Controller
                     'name' => func_str_to_upper_utf8($r->description)
                 ];
             });
+        $unit_types = UnitType::whereActive()->orderByDescription()->get();
 
         $establishments = Establishment::all();
         $series = Series::all()->toArray();
@@ -509,6 +510,7 @@ class DispatchController extends Controller
             'transportModeTypes',
             'transferReasonTypes',
             'unitTypes',
+            'unit_types',
             'countries',
             // 'departments',
             // 'provinces',

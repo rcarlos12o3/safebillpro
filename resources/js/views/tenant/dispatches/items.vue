@@ -18,6 +18,17 @@
                                 maxlength="500">
                             </el-input>
                         </div>
+                        <div class="form-group">
+                            <label class="control-label">Unidad de Medida</label>
+                            <el-select v-model="form.item_unit_type_id" filterable placeholder="Seleccionar unidad">
+                                <el-option
+                                    v-for="option in unit_types"
+                                    :key="option.id"
+                                    :label="`${option.id} - ${option.description}`"
+                                    :value="option.id">
+                                </el-option>
+                            </el-select>
+                        </div>
                     </template>
                     <template v-else>
                         <div class="form-group" :class="{'has-danger': errors.items}">
@@ -90,6 +101,7 @@
                 various_item: false,
                 various_item_barcode: 'VARIOUS_ITEM',
                 search_item_by_barcode: false,
+                unit_types: [],
             }
         },
         methods: {
@@ -108,6 +120,7 @@
                 this.$http.post(`/${this.resource}/tables`).then(response => {
                     this.items = response.data.items;
                     this.all_items = this.items
+                    this.unit_types = response.data.unit_types
                 });
 
                 this.form = {};
@@ -135,9 +148,12 @@
                     if(isNaN(this.form.quantity))this.form.quantity = 0;
                     const item = this.items.find((item) => item.id == this.form.item)
 
-                    // Si es producto manual, sobrescribir la descripción
+                    // Si es producto manual, sobrescribir la descripción y unidad
                     if (this.various_item) {
                         item.description = this.form.item_description;
+                        if (this.form.item_unit_type_id) {
+                            item.unit_type_id = this.form.item_unit_type_id;
+                        }
                     }
 
                     item.IdLoteSelected = this.form.IdLoteSelected;
@@ -214,6 +230,7 @@
                         this.form.item = various_item_found.id;
                         this.item = various_item_found;
                         this.form.item_description = '';
+                        this.form.item_unit_type_id = various_item_found.unit_type_id;
 
                         // Focus en el input de descripción
                         this.$nextTick(() => {

@@ -650,6 +650,16 @@
                                                                         placeholder="Descripción del producto/servicio...">
                                                                     </el-input>
                                                                 </div>
+                                                                <div class="form-group">
+                                                                    <el-select v-model="item_unit_type_id" filterable placeholder="Unidad de Medida">
+                                                                        <el-option
+                                                                            v-for="option in unit_types"
+                                                                            :key="option.id"
+                                                                            :label="`${option.id} - ${option.description}`"
+                                                                            :value="option.id">
+                                                                        </el-option>
+                                                                    </el-select>
+                                                                </div>
                                                             </template>
                                                             <template v-else>
                                                                 <div :class="{ 'has-danger': errors.items }" class="form-group"
@@ -901,6 +911,7 @@ export default {
             countries: [],
             seriesAll: [],
             unitTypes: [],
+            unit_types: [],
             all_customers: [],
             loading_search: false,
             loading_search_dispatcher: false,
@@ -938,6 +949,7 @@ export default {
             various_item: false,
             various_item_barcode: 'VARIOUS_ITEM',
             item_description: '',
+            item_unit_type_id: null,
         }
     },
     created() {
@@ -961,6 +973,7 @@ export default {
             this.transportModeTypes = response.data.transportModeTypes;
             this.establishments = response.data.establishments;
             this.unitTypes = response.data.unitTypes;
+            this.unit_types = response.data.unit_types;
             this.all_customers = [];
             this.countries = response.data.countries;
             this.locations = response.data.locations;
@@ -1254,6 +1267,7 @@ export default {
                     this.current_item = various_item_found.id;
                     this.$store.commit('setItem', various_item_found);
                     this.item_description = '';
+                    this.item_unit_type_id = various_item_found.unit_type_id;
 
                     // Focus en el input de descripción
                     this.$nextTick(() => {
@@ -1267,6 +1281,7 @@ export default {
                 // Resetear
                 this.current_item = null;
                 this.item_description = '';
+                this.item_unit_type_id = null;
                 this.$store.commit('setItem', null);
             }
         },
@@ -1319,6 +1334,10 @@ export default {
                     item.original_item_id = originalItemId;
                     // Sobrescribir la descripción
                     item.description = this.item_description;
+                    // Sobrescribir la unidad de medida si se seleccionó una
+                    if (this.item_unit_type_id) {
+                        item.unit_type_id = this.item_unit_type_id;
+                    }
                 }
 
                 item.IdLoteSelected = this.IdLoteSelected;
@@ -1339,6 +1358,7 @@ export default {
                 if (this.various_item) {
                     this.various_item = false;
                     this.item_description = '';
+                    this.item_unit_type_id = null;
                 }
 
                 this.focusDescription()
