@@ -16,6 +16,9 @@ use App\Models\Tenant\Company;
 use Carbon\Carbon;
 use Modules\Report\Http\Resources\GeneralItemCollection;
 use Modules\Report\Traits\ReportTrait;
+use App\Models\Tenant\DownloadTray;
+use Modules\Report\Jobs\ProcessGeneralItemsReport;
+use Hyn\Tenancy\Environment;
 
 
 class ReportGeneralItemController extends Controller
@@ -110,7 +113,16 @@ class ReportGeneralItemController extends Controller
         if( $document_type_id && $document_type_id == '80' ) {
             $relation = 'sale_note';
 
-            $data = SaleNoteItem::whereHas('sale_note', function($query) use($date_start, $date_end, $user_id, $documents_excluded){
+            // Eager loading optimizado para notas de venta
+            $data = SaleNoteItem::with([
+                'sale_note.user',
+                'relation_item.lots',
+                'relation_item.brand',
+                'relation_item.category',
+                'relation_item.web_platform',
+                'relation_item.sets.individual_item'
+            ])
+            ->whereHas('sale_note', function($query) use($date_start, $date_end, $user_id, $documents_excluded){
                 $query
                 ->whereBetween('date_of_issue', [$date_start, $date_end])
                 ->latest()
@@ -128,16 +140,38 @@ class ReportGeneralItemController extends Controller
 
             $document_types = $document_type_id ? [$document_type_id] : ['01','03'];
 
-            $data = $model::whereHas($relation, function ($query) use ($date_start, $date_end, $document_types, $model,$documents_excluded) {
-                $query
-                    ->whereBetween('date_of_issue', [$date_start, $date_end])
-                    ->whereIn('document_type_id', $document_types)
-                    ->latest()
-                    ->whereTypeUser();
-                if ($model == 'App\Models\Tenant\DocumentItem') {
-                    $query->whereNotIn('state_type_id', $documents_excluded);
-                }
-            });
+            // Eager loading optimizado según el tipo de documento
+            $with_relations = [
+                $relation . '.user',
+                $relation . '.seller',
+                'relation_item.lots',
+                'relation_item.brand',
+                'relation_item.category',
+                'relation_item.web_platform',
+                'relation_item.sets.individual_item'
+            ];
+
+            if ($model == DocumentItem::class) {
+                // Document usa 'person' en vez de 'customer'
+                $with_relations[] = $relation . '.person.department';
+                $with_relations[] = $relation . '.person.province';
+                $with_relations[] = $relation . '.person.district';
+            } else {
+                // Purchase usa 'supplier'
+                $with_relations[] = $relation . '.supplier.person';
+            }
+
+            $data = $model::with($with_relations)
+                ->whereHas($relation, function ($query) use ($date_start, $date_end, $document_types, $model,$documents_excluded) {
+                    $query
+                        ->whereBetween('date_of_issue', [$date_start, $date_end])
+                        ->whereIn('document_type_id', $document_types)
+                        ->latest()
+                        ->whereTypeUser();
+                    if ($model == 'App\Models\Tenant\DocumentItem') {
+                        $query->whereNotIn('state_type_id', $documents_excluded);
+                    }
+                });
             if ($user_id && $user_type === 'CREADOR') {
                 $data = $data->whereHas($relation.'.user', function($query) use($user_id){
                     $query->where('user_id', $user_id);
@@ -202,39 +236,52 @@ class ReportGeneralItemController extends Controller
     }
 
 
+    /**
+     * Generar PDF - Procesado en segundo plano mediante Job
+     */
     public function pdf(Request $request) {
-        ini_set('memory_limit', '4026M');
-        ini_set("pcre.backtrack_limit", "5000000");
-        $records = $this->getRecordsItems($request->all())->latest('id')->get();
-        $type_name = ($request->type == 'sale') ? 'Ventas_':'Compras_';
-        $type = $request->type;
-        $document_type_id = $request['document_type_id'];
-        $request_apply_conversion_to_pen = $request['apply_conversion_to_pen'];
-
-        $pdf = PDF::loadView('report::general_items.report_pdf', compact("records", "type", "document_type_id", "request_apply_conversion_to_pen"))->setPaper('a4', 'landscape');
-
-        $filename = 'Reporte_General_Productos_'.$type_name.Carbon::now();
-
-        return $pdf->download($filename.'.pdf');
+        return $this->dispatchReportJob($request, 'pdf');
     }
 
-
+    /**
+     * Generar Excel - Procesado en segundo plano mediante Job
+     */
     public function excel(Request $request) {
-        ini_set('memory_limit', '4026M');
-        ini_set("pcre.backtrack_limit", "5000000");
-        $records = $this->getRecordsItems($request->all())->latest('id')->get();
-        $type = ($request->type == 'sale') ? 'Ventas_':'Compras_';
-        $document_type_id = $request['document_type_id'];
-        $request_apply_conversion_to_pen = $request['apply_conversion_to_pen'];
+        return $this->dispatchReportJob($request, 'excel');
+    }
 
-        $generalItemExport= new GeneralItemExport();
-        $generalItemExport
-            ->records($records)
-            ->type($request->type)
-            ->document_type_id($document_type_id)
-            ->request_apply_conversion_to_pen($request_apply_conversion_to_pen);
-            
-        return $generalItemExport->download('Reporte_General_Productos_'.$type.Carbon::now().'.xlsx');
+    /**
+     * Despachar Job para procesamiento asíncrono
+     */
+    private function dispatchReportJob(Request $request, string $format)
+    {
+        $tenancy = app(Environment::class);
+        $website_id = $tenancy->website()->id;
 
+        // Crear registro en bandeja de descargas
+        $tray = DownloadTray::create([
+            'user_id' => auth()->id(),
+            'module' => 'general_items',
+            'format' => $format,
+            'status' => 'IN_PROCESS',
+            'date_init' => Carbon::now(),
+            'payload_request' => json_encode($request->all()),
+            'type' => $request->type ?? 'sale'
+        ]);
+
+        // Despachar job en cola
+        ProcessGeneralItemsReport::dispatch(
+            $website_id,
+            $tray->id,
+            $request->all(),
+            $format
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'El reporte se está generando en segundo plano. Revisa la bandeja de descargas en unos momentos.',
+            'tray_id' => $tray->id,
+            'redirect_url' => '/reports/download-tray'
+        ]);
     }
 }

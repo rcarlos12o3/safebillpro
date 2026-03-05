@@ -363,10 +363,50 @@
 
             },
             clickDownload(type) {
-                let query = queryString.stringify({
-                    ...this.form
+                // Mostrar loading
+                const loading = this.$loading({
+                    lock: true,
+                    text: 'Generando reporte...',
+                    spinner: 'el-icon-loading',
+                    background: 'rgba(0, 0, 0, 0.7)'
                 });
-                window.open(`/${this.resource}/${type}/?${query}`, '_blank');
+
+                // Hacer petición AJAX en lugar de window.open
+                this.$http.get(`/${this.resource}/${type}`, {
+                    params: this.form
+                })
+                .then(response => {
+                    loading.close();
+
+                    if (response.data.success) {
+                        this.$message({
+                            type: 'success',
+                            message: response.data.message,
+                            duration: 5000,
+                            showClose: true
+                        });
+
+                        // Preguntar si desea ir a la bandeja de descargas
+                        this.$confirm('¿Deseas ir a la bandeja de descargas ahora?', 'Reporte en proceso', {
+                            confirmButtonText: 'Ir a bandeja',
+                            cancelButtonText: 'Continuar aquí',
+                            type: 'info'
+                        }).then(() => {
+                            window.location.href = response.data.redirect_url;
+                        }).catch(() => {
+                            // Usuario decidió quedarse
+                        });
+                    }
+                })
+                .catch(error => {
+                    loading.close();
+                    this.$message({
+                        type: 'error',
+                        message: 'Error al generar el reporte. Por favor intenta de nuevo.',
+                        duration: 3000
+                    });
+                    console.error('Error:', error);
+                });
             },
             initForm(){
 
