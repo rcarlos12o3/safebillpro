@@ -3386,7 +3386,8 @@ export default {
         },
         async asignPlateNumberToItems() {
 
-            if (this.form.plate_number) {
+            // Solo agregar placa a items si la configuración lo permite
+            if (this.form.plate_number && this.configuration && this.configuration.show_plate_number_in_description) {
 
                 await this.form.items.forEach(item => {
 

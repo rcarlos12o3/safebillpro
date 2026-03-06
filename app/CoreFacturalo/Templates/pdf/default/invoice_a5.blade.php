@@ -163,7 +163,7 @@
             <td></td>
         </tr>
     @endif
-    @if ($document->plate_number !== null)
+    @if ($document->plate_number !== null && isset($configurationInPdf) && $configurationInPdf->show_plate_number_in_header)
         <tr>
             <td >N° Placa:</td>
             <td >{{ $document->plate_number }}</td>

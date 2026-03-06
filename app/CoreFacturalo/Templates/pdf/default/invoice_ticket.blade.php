@@ -307,7 +307,7 @@
             <td><p class="desc">{{ $document->quotation->sale_opportunity->number_full}}</p></td>
         </tr>
     @endisset
-    @if ($document->plate_number !== null)
+    @if ($document->plate_number !== null && isset($configurationInPdf) && $configurationInPdf->show_plate_number_in_header)
     <tr>
         <td ><p class="desc">N° Placa:</p></td>
         <td ><p class="desc">{{ $document->plate_number }}</p></td>

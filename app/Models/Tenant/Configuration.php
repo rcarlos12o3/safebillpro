@@ -321,6 +321,8 @@
             'qr_api_instance',
             'show_seller_in_pdf',
             'show_bank_accounts_in_pdf',
+            'show_plate_number_in_header',
+            'show_plate_number_in_description',
             'enabled_price_items_dispatch',
             'legend_footer_sale',
             'exact_discount',
@@ -464,6 +466,8 @@
             'qr_api_enable' => 'bool',
             'show_seller_in_pdf' => 'bool',
             'show_bank_accounts_in_pdf' => 'bool',
+            'show_plate_number_in_header' => 'bool',
+            'show_plate_number_in_description' => 'bool',
             'enabled_price_items_dispatch' => 'bool',
             'exact_discount' => 'bool',
             'show_brand_in_item_list' => 'bool'
@@ -730,6 +734,8 @@
                 'enable_list_product' => $this->enable_list_product,
                 'show_seller_in_pdf' => $this->show_seller_in_pdf,
                 'show_bank_accounts_in_pdf' => $this->show_bank_accounts_in_pdf,
+                'show_plate_number_in_header' => $this->show_plate_number_in_header,
+                'show_plate_number_in_description' => $this->show_plate_number_in_description,
                 'enabled_price_items_dispatch' => $this->enabled_price_items_dispatch,
                 'exact_discount' => $this->exact_discount,
                 'show_brand_in_item_list' => (bool)$this->show_brand_in_item_list
@@ -2569,7 +2575,7 @@
 
         public function scopeGetConfigurationInPdf($query)
         {
-            return $query->select('show_seller_in_pdf', 'show_bank_accounts_in_pdf','legend_footer_sale')->first();
+            return $query->select('show_seller_in_pdf', 'show_bank_accounts_in_pdf','legend_footer_sale','show_plate_number_in_header','show_plate_number_in_description')->first();
         }
         
     }

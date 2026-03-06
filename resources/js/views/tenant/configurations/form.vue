@@ -1161,6 +1161,40 @@
                             </div>
                             <div class="col-md-4 mt-4">
                                 <div class="form-group">
+                                    <label class="">Mostrar placa en encabezado
+                                        <el-tooltip class="item" effect="dark" placement="top-start">
+                                            <div slot="content">Mostrar número de placa en el encabezado del PDF (debajo de la dirección del cliente)
+                                            </div>
+                                            <i class="fa fa-info-circle"></i>
+                                        </el-tooltip>
+                                    </label>
+                                    <div :class="{ 'has-danger': errors.show_plate_number_in_header }" class="form-group">
+                                        <el-switch v-model="form.show_plate_number_in_header" active-text="Si"
+                                            inactive-text="No" @change="submit"></el-switch>
+                                        <small v-if="errors.show_plate_number_in_header" class="form-control-feedback"
+                                            v-text="errors.show_plate_number_in_header[0]"></small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mt-4">
+                                <div class="form-group">
+                                    <label class="">Mostrar placa en descripción
+                                        <el-tooltip class="item" effect="dark" placement="top-start">
+                                            <div slot="content">Mostrar número de placa en la descripción de cada producto
+                                            </div>
+                                            <i class="fa fa-info-circle"></i>
+                                        </el-tooltip>
+                                    </label>
+                                    <div :class="{ 'has-danger': errors.show_plate_number_in_description }" class="form-group">
+                                        <el-switch v-model="form.show_plate_number_in_description" active-text="Si"
+                                            inactive-text="No" @change="submit"></el-switch>
+                                        <small v-if="errors.show_plate_number_in_description" class="form-control-feedback"
+                                            v-text="errors.show_plate_number_in_description[0]"></small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mt-4">
+                                <div class="form-group">
                                     <label class="">Mostrar ticket 80mm
                                         <el-tooltip class="item" effect="dark" placement="top-start">
                                             <div slot="content">Disponible para Ventas (Facturas/Boletas/Notas de
@@ -2453,6 +2487,8 @@ export default {
                 condition_sale_purchase_price_to_item: false,
                 show_seller_in_pdf: true,
                 show_bank_accounts_in_pdf: true,
+                show_plate_number_in_header: true,
+                show_plate_number_in_description: false,
                 show_brand_in_item_list: true,
             };
         },
