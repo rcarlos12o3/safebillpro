@@ -10,6 +10,7 @@ use App\CoreFacturalo\WS\Response\BillResult;
 use App\CoreFacturalo\WS\Response\CdrResponse;
 use App\CoreFacturalo\WS\Response\Error;
 use App\CoreFacturalo\WS\Validator\XmlErrorCodeProvider;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Class BaseSunat.
@@ -142,7 +143,21 @@ class BaseSunat
      */
     protected function extractResponse($zipContent)
     {
+        // LOGGING: Inicio de extracción de respuesta
+        Log::info('BaseSunat::extractResponse: Iniciando extracción', [
+            'zip_content_type' => gettype($zipContent),
+            'zip_content_size' => is_string($zipContent) ? strlen($zipContent) : 'not a string',
+            'zip_content_empty' => empty($zipContent)
+        ]);
+
         $xml = $this->getXmlResponse($zipContent);
+
+        // LOGGING: XML extraído del ZIP
+        Log::info('BaseSunat::extractResponse: XML extraído', [
+            'xml_size' => strlen($xml),
+            'xml_empty' => empty($xml),
+            'xml_preview' => substr($xml, 0, 200)
+        ]);
 
         return $this->cdrReader->getCdrResponse($xml);
     }
@@ -183,12 +198,37 @@ class BaseSunat
 
     public function getXmlResponse($content)
     {
+        // LOGGING: Antes de descomprimir
+        Log::info('BaseSunat::getXmlResponse: Antes de descomprimir', [
+            'content_type' => gettype($content),
+            'content_size' => is_string($content) ? strlen($content) : 'not a string',
+            'content_empty' => empty($content),
+            'content_first_bytes_hex' => is_string($content) && strlen($content) > 0 ? bin2hex(substr($content, 0, 20)) : 'N/A'
+        ]);
+
         $filter = function ($filename) {
             return 'xml' === strtolower($this->getFileExtension($filename));
         };
+
         $files = $this->decompressor->decompress($content, $filter);
 
-        return 0 === count($files) ? '' : $files[0]['content'];
+        // LOGGING: Después de descomprimir
+        Log::info('BaseSunat::getXmlResponse: Después de descomprimir', [
+            'files_count' => count($files),
+            'files_info' => array_map(function($file) {
+                return [
+                    'filename' => $file['filename'] ?? 'N/A',
+                    'content_size' => isset($file['content']) ? strlen($file['content']) : 0
+                ];
+            }, $files)
+        ]);
+
+        if (0 === count($files)) {
+            Log::warning('BaseSunat::getXmlResponse: No se extrajeron archivos del ZIP');
+            return '';
+        }
+
+        return $files[0]['content'];
     }
 
     private function getFileExtension($filename)

@@ -43,8 +43,19 @@ class DomCdrReader
      */
     private function getXpath($xmlContent)
     {
+        if (empty($xmlContent)) {
+            Log::error('DomCdrReader: Empty XML content provided');
+            throw new \Exception('Empty XML content provided');
+        }
+
         $doc = new \DOMDocument();
-        $doc->loadXML($xmlContent);
+        @$doc->loadXML($xmlContent); // Suprimir warning si XML mal formado
+
+        if (!$doc->documentElement) {
+            Log::error('DomCdrReader: Invalid XML content - no document element');
+            throw new \Exception('Invalid XML content');
+        }
+
         $xpt = new \DOMXPath($doc);
         $xpt->registerNamespace('x', $doc->documentElement->namespaceURI);
 
