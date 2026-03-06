@@ -346,7 +346,7 @@ class PosController extends Controller
                         'message' => "El producto seleccionado no está disponible en su almacén!"
                     ];
 
-                $stock = $item_warehouse->stock - $total_item_quantity;
+                $stock = (float)$item_warehouse->stock - (float)$total_item_quantity;
 
 
                 if ($item_warehouse->item->unit_type_id !== 'ZZ') {
@@ -376,7 +376,7 @@ class PosController extends Controller
                     'message' => "El producto seleccionado no está disponible en su almacén!"
                 ];
 
-            $stock = $item_warehouse->stock - $quantity;
+            $stock = (float)$item_warehouse->stock - (float)$quantity;
 
 
             if ($item_warehouse->item->unit_type_id !== 'ZZ') {

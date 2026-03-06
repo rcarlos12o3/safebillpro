@@ -25,7 +25,9 @@ class ZipFileDecompress
             $output = iterator_to_array($this->getFiles($zip, $filter));
         }
         $zip->close();
-        unlink($temp);
+        if (file_exists($temp)) {
+            unlink($temp);
+        }
 
         return $output;
     }

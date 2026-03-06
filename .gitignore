@@ -68,4 +68,4 @@ public/porto-light/js/bloquear_cliente.js
 # Assets compilados (descomentar si NO quieres versionar assets compilados)
 # /public/js/app.js
 # /public/css/app.css
-# /public/mix-manifest.json
+# /public/mix-manifest.json*.bak
