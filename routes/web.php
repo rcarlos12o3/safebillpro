@@ -428,6 +428,7 @@ if ($hostname) {
                 Route::get('/get_origin_addresses/{establishment_id}', 'Tenant\DispatchController@getOriginAddresses');
                 Route::get('/get_addresses_other_establishments/{establishment_id}', 'Tenant\DispatchController@getAddressesOtherEstablishments');
                 Route::get('/get_delivery_addresses/{person_id}', 'Tenant\DispatchController@getDeliveryAddresses');
+                Route::get('/manual-descriptions', 'Tenant\DispatchController@getManualDescriptions');
             });
 
             Route::prefix('dispatch_carrier')->group(function () {

@@ -446,9 +446,55 @@
                                         <template v-if="config.enabled_price_items_dispatch">
                                             <tr v-for="(row, index) in form.items" :key="index">
                                                 <td>{{ index + 1 }}</td>
-                                                <td>{{ row.unit_type_id }}</td>
-                                                <td v-html="setDescriptionOfItem(row)" class="text-dark"></td>
-                                                <td class="text-end">{{ getFormatQuantity(row.quantity) }} 
+                                                <td>
+                                                    <template v-if="row.id && String(row.id).startsWith('manual_')">
+                                                        <el-select
+                                                            v-model="row.unit_type_id"
+                                                            size="small"
+                                                            filterable
+                                                            style="width: 100px">
+                                                            <el-option
+                                                                v-for="option in unit_types"
+                                                                :key="option.id"
+                                                                :label="option.id"
+                                                                :value="option.id">
+                                                            </el-option>
+                                                        </el-select>
+                                                    </template>
+                                                    <template v-else>
+                                                        {{ row.unit_type_id }}
+                                                    </template>
+                                                </td>
+                                                <td class="text-dark">
+                                                    <template v-if="row.id && String(row.id).startsWith('manual_')">
+                                                        <el-autocomplete
+                                                            v-model="row.description"
+                                                            size="small"
+                                                            maxlength="500"
+                                                            :fetch-suggestions="fetchManualDescriptions"
+                                                            :trigger-on-focus="false"
+                                                            placeholder="Descripción..."
+                                                            style="width: 100%">
+                                                        </el-autocomplete>
+                                                    </template>
+                                                    <template v-else>
+                                                        <span v-html="setDescriptionOfItem(row)"></span>
+                                                    </template>
+                                                </td>
+                                                <td class="text-end">
+                                                    <template v-if="row.id && String(row.id).startsWith('manual_')">
+                                                        <el-input-number
+                                                            v-model="row.quantity"
+                                                            size="small"
+                                                            :max="99999999"
+                                                            :min="0.0001"
+                                                            :precision="4"
+                                                            :step="1">
+                                                        </el-input-number>
+                                                    </template>
+                                                    <template v-else>
+                                                        {{ getFormatQuantity(row.quantity) }}
+                                                    </template>
                                                     <a v-if="row.IdLoteSelected!=''" class="text-center font-weight-bold text-info"
                                                         href="#" @click.prevent="listLotGroupSelected(row.IdLoteSelected)">
                                                         [Lotes]
@@ -466,9 +512,55 @@
                                         <template v-else>
                                             <tr v-for="(row, index) in form.items" :key="index">
                                                 <td>{{ index + 1 }}</td>
-                                                <td>{{ row.unit_type_id }}</td>
-                                                <td v-html="setDescriptionOfItem(row)" class="text-dark"></td>
-                                                <td class="text-end">{{ getFormatQuantity(row.quantity) }}
+                                                <td>
+                                                    <template v-if="row.id && String(row.id).startsWith('manual_')">
+                                                        <el-select
+                                                            v-model="row.unit_type_id"
+                                                            size="small"
+                                                            filterable
+                                                            style="width: 100px">
+                                                            <el-option
+                                                                v-for="option in unit_types"
+                                                                :key="option.id"
+                                                                :label="option.id"
+                                                                :value="option.id">
+                                                            </el-option>
+                                                        </el-select>
+                                                    </template>
+                                                    <template v-else>
+                                                        {{ row.unit_type_id }}
+                                                    </template>
+                                                </td>
+                                                <td class="text-dark">
+                                                    <template v-if="row.id && String(row.id).startsWith('manual_')">
+                                                        <el-autocomplete
+                                                            v-model="row.description"
+                                                            size="small"
+                                                            maxlength="500"
+                                                            :fetch-suggestions="fetchManualDescriptions"
+                                                            :trigger-on-focus="false"
+                                                            placeholder="Descripción..."
+                                                            style="width: 100%">
+                                                        </el-autocomplete>
+                                                    </template>
+                                                    <template v-else>
+                                                        <span v-html="setDescriptionOfItem(row)"></span>
+                                                    </template>
+                                                </td>
+                                                <td class="text-end">
+                                                    <template v-if="row.id && String(row.id).startsWith('manual_')">
+                                                        <el-input-number
+                                                            v-model="row.quantity"
+                                                            size="small"
+                                                            :max="99999999"
+                                                            :min="0.0001"
+                                                            :precision="4"
+                                                            :step="1">
+                                                        </el-input-number>
+                                                    </template>
+                                                    <template v-else>
+                                                        {{ getFormatQuantity(row.quantity) }}
+                                                    </template>
                                                     <a v-if="row.IdLoteSelected!=''" class="text-center font-weight-bold text-info"
                                                         href="#" @click.prevent="listLotGroupSelected(row.IdLoteSelected)">
                                                         [Lotes]
@@ -642,23 +734,32 @@
                                                     <div class="row">
                                                         <div class="col-7">
                                                             <template v-if="various_item">
-                                                                <div class="form-group">
-                                                                    <el-input
-                                                                        v-model="item_description"
-                                                                        ref="inputItemDescriptionInline"
-                                                                        maxlength="500"
-                                                                        placeholder="Descripción del producto/servicio...">
-                                                                    </el-input>
-                                                                </div>
-                                                                <div class="form-group">
-                                                                    <el-select v-model="item_unit_type_id" filterable placeholder="Unidad de Medida">
-                                                                        <el-option
-                                                                            v-for="option in unit_types"
-                                                                            :key="option.id"
-                                                                            :label="`${option.id} - ${option.description}`"
-                                                                            :value="option.id">
-                                                                        </el-option>
-                                                                    </el-select>
+                                                                <div class="row">
+                                                                    <div class="col-7">
+                                                                        <div class="form-group">
+                                                                            <el-autocomplete
+                                                                                v-model="item_description"
+                                                                                ref="inputItemDescriptionInline"
+                                                                                maxlength="500"
+                                                                                :fetch-suggestions="fetchManualDescriptions"
+                                                                                :trigger-on-focus="false"
+                                                                                placeholder="Descripción del producto/servicio..."
+                                                                                style="width: 100%">
+                                                                            </el-autocomplete>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="col-5">
+                                                                        <div class="form-group">
+                                                                            <el-select v-model="item_unit_type_id" filterable placeholder="Unidad de Medida">
+                                                                                <el-option
+                                                                                    v-for="option in unit_types"
+                                                                                    :key="option.id"
+                                                                                    :label="`${option.id} - ${option.description}`"
+                                                                                    :value="option.id">
+                                                                                </el-option>
+                                                                            </el-select>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </template>
                                                             <template v-else>
@@ -1235,6 +1336,27 @@ export default {
                     })
             } else {
                 await this.filterItems()
+            }
+        },
+        async fetchManualDescriptions(queryString, cb) {
+            if (queryString.length < 2) {
+                cb([]);
+                return;
+            }
+
+            try {
+                const response = await this.$http.get('/dispatches/manual-descriptions', {
+                    params: { search: queryString }
+                });
+
+                const suggestions = response.data.map(description => {
+                    return { value: description };
+                });
+
+                cb(suggestions);
+            } catch (error) {
+                console.error('Error fetching manual descriptions:', error);
+                cb([]);
             }
         },
         async setVariousItem() {

@@ -901,4 +901,41 @@ class DispatchController extends Controller
 
         return $records;
     }
+
+    /**
+     * Get unique descriptions from manual products in dispatch items
+     *
+     * @param Request $request
+     * @return array
+     */
+    public function getManualDescriptions(Request $request)
+    {
+        $search = $request->input('search', '');
+
+        // Get dispatch items with their item JSON data
+        $dispatchItems = DispatchItem::query()
+            ->select('item')
+            ->whereNotNull('item')
+            ->get();
+
+        $descriptions = [];
+
+        foreach ($dispatchItems as $dispatchItem) {
+            if ($dispatchItem->item && isset($dispatchItem->item->description)) {
+                $description = trim($dispatchItem->item->description);
+                if (!empty($description) && !in_array($description, $descriptions)) {
+                    // If search term provided, filter by it
+                    if (empty($search) || stripos($description, $search) !== false) {
+                        $descriptions[] = $description;
+                    }
+                }
+            }
+        }
+
+        // Sort alphabetically and limit to 20 results
+        sort($descriptions);
+        $descriptions = array_slice($descriptions, 0, 20);
+
+        return response()->json($descriptions);
+    }
 }
