@@ -23,7 +23,12 @@
                 <h3 class="my-0">Listado de cajas</h3>
             </div> -->
             <div class="card-body">
-                <data-table :resource="resource">
+                <data-table
+                    :resource="resource"
+                    :establishments="establishments"
+                    :show-establishment-filter="true"
+                    :current-user="currentUser"
+                >
                     <tr slot="heading">
                         <!-- <th>#</th> -->
                         <th>Referencia</th>
@@ -156,7 +161,11 @@
     export default {
         mixins: [deletable],
         components: { DataTable, CashForm, CashOptions},
-        props: ['typeUser'],
+        props: {
+            typeUser: String,
+            currentUser: Object,
+            establishments: Array
+        },
         data() {
             return {
                 showDialog: false,
@@ -164,7 +173,7 @@
                 open_cash: true,
                 resource: 'cash',
                 recordId: null,
-                cash:null,
+                cash: null,
             }
         },
         async created() {

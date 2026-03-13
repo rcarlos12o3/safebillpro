@@ -42,7 +42,10 @@
                 </el-dropdown>
             </div>
             <div class="card-body">
-                <data-table :resource="resource">
+                <data-table
+                    :resource="resource"
+                    :current-user="currentUser"
+                >
                     <tr slot="heading">
                         <!-- <th>#</th> -->
                         <th class="text-right"  v-if="columns.seller_name.visible" >Vendedor</th>
@@ -374,7 +377,9 @@
         props: [
             'soapCompany',
             'typeUser',
-            'configuration'
+            'configuration',
+            'currentUser',
+            'establishments'
         ],
         mixins: [deletable],
         components: {

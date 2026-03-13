@@ -86,8 +86,10 @@ class SaleNoteController extends Controller
         $company = Company::select('soap_type_id')->first();
         $soap_company  = $company->soap_type_id;
         $configuration = Configuration::select('ticket_58')->first();
+        $user = auth()->user();
+        $establishments = Establishment::all();
 
-        return view('tenant.sale_notes.index', compact('soap_company', 'configuration'));
+        return view('tenant.sale_notes.index', compact('soap_company', 'configuration', 'user', 'establishments'));
     }
 
 
@@ -427,7 +429,7 @@ class SaleNoteController extends Controller
     {
         return [
             'series' => Series::whereIn('document_type_id', ['80'])->get(),
-
+            'establishments' => Establishment::all(),
         ];
     }
 
@@ -496,6 +498,13 @@ class SaleNoteController extends Controller
         if($request->observations) {
             $records->where('observation', 'like', '%' . $request->observations . '%');
         }
+
+        if($request->establishment_id && $request->establishment_id !== 'all') {
+            $records->whereHas('user', function($q) use ($request) {
+                $q->where('establishment_id', $request->establishment_id);
+            });
+        }
+
         return $records;
     }
 

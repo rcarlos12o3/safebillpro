@@ -32,7 +32,31 @@
                             </el-select>
                         </div>
                     </div>
-                    <div class="col-lg-4 col-md-4 col-sm-12 pb-2">
+                    <div class="col-lg-4 col-md-4 col-sm-12 pb-2" v-if="showEstablishmentFilter">
+                        <div class="d-flex">
+                            <div style="width:60px">
+                                Tienda:
+                            </div>
+                            <el-select
+                                v-model="search.establishment_id"
+                                placeholder="Seleccione tienda"
+                                style="width: 100%;"
+                                @change="getRecords"
+                            >
+                                <el-option
+                                    value="all"
+                                    label="Todas"
+                                ></el-option>
+                                <el-option
+                                    v-for="establishment in establishments"
+                                    :key="establishment.id"
+                                    :value="establishment.id"
+                                    :label="establishment.description"
+                                ></el-option>
+                            </el-select>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 col-md-4 col-sm-12 pb-2" :class="{'col-lg-6': !showEstablishmentFilter}">
                         <template
                             v-if="
                                 search.column === 'date_of_issue' ||
@@ -169,6 +193,18 @@ export default {
         pharmacy: Boolean,
         restaurant: Boolean,
         ecommerce: Boolean,
+        establishments: {
+            type: Array,
+            default: () => []
+        },
+        showEstablishmentFilter: {
+            type: Boolean,
+            default: false
+        },
+        currentUser: {
+            type: Object,
+            default: null
+        },
     },
     data() {
         return {
@@ -176,6 +212,7 @@ export default {
                 column: null,
                 value: null,
                 list_value: 'all',
+                establishment_id: 'all',
             },
             columns: [],
             records: [],
@@ -203,6 +240,12 @@ export default {
         if(this.restaurant !== undefined && this.restaurant === true){
             this.fromRestaurant = true;
         }
+
+        // Establecer la tienda del usuario actual por defecto
+        if(this.currentUser && this.currentUser.establishment_id) {
+            this.search.establishment_id = this.currentUser.establishment_id;
+        }
+
         this.$eventHub.$on("reloadData", () => {
             this.getRecords();
         });

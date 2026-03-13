@@ -101,13 +101,18 @@ class DocumentController extends Controller
         $view_apiperudev_validator_cpe = config('tenant.apiperudev_validator_cpe');
         $view_validator_cpe = config('tenant.validator_cpe');
 
+        $user = auth()->user();
+        $establishments = Establishment::all();
+
         return view('tenant.documents.index',
             compact('is_client', 'import_documents',
                 'import_documents_second',
                 'document_import_excel',
                 'configuration',
                 'view_apiperudev_validator_cpe',
-                'view_validator_cpe'));
+                'view_validator_cpe',
+                'user',
+                'establishments'));
     }
 
     public function columns()
@@ -1189,6 +1194,7 @@ class DocumentController extends Controller
         $guides = $request->guides;
         $plate_numbers = $request->plate_numbers;
         $observations = $request->observations;
+        $establishment_id = $request->establishment_id;
 
 //        return $observations;
         $records = Document::query();
@@ -1214,6 +1220,13 @@ class DocumentController extends Controller
         if ($purchase_order) {
             $records->where('purchase_order', $purchase_order);
         }
+
+        if ($establishment_id && $establishment_id !== 'all') {
+            $records->whereHas('user', function($q) use ($establishment_id) {
+                $q->where('establishment_id', $establishment_id);
+            });
+        }
+
         $records->whereTypeUser()->latest();
 
         if ($pending_payment) {
@@ -1260,7 +1273,7 @@ class DocumentController extends Controller
         $state_types = StateType::get();
         $document_types = DocumentType::whereIn('id', ['01', '03', '07', '08'])->get();
         $series = Series::whereIn('document_type_id', ['01', '03', '07', '08'])->get();
-        $establishments = Establishment::where('id', auth()->user()->establishment_id)->get();// Establishment::all();
+        $establishments = Establishment::all();
 
         return compact('customers', 'document_types', 'series', 'establishments', 'state_types', 'items', 'categories');
 

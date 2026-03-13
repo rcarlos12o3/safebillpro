@@ -687,6 +687,7 @@ if ($hostname) {
             Route::get('cash/records', 'Tenant\CashController@records');
             Route::get('cash/create', 'Tenant\CashController@create')->name('tenant.cash.create');
             Route::get('cash/tables', 'Tenant\CashController@tables');
+            Route::get('cash/establishments', 'Tenant\CashController@establishments');
             Route::get('cash/opening_cash', 'Tenant\CashController@opening_cash');
             Route::get('cash/opening_cash_check/{user_id}', 'Tenant\CashController@opening_cash_check');
 

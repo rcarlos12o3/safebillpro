@@ -62,6 +62,12 @@
                     <div class="col-lg-4 col-md-4 form-group">
                         <el-input v-model="search.observations" placeholder="Observaciones" clearable></el-input>
                     </div>
+                    <div class="col-lg-4 col-md-4 form-group">
+                        <el-select v-model="search.establishment_id" placeholder="Tienda" filterable clearable>
+                            <el-option value="all" label="Todas"></el-option>
+                            <el-option v-for="option in establishments" :key="option.id" :value="option.id" :label="option.description"></el-option>
+                        </el-select>
+                    </div>
                     <el-checkbox v-model="search_by_plate" :disabled="recordItem != null">
                         Filtrar por placa
                     </el-checkbox>
@@ -126,7 +132,8 @@
                 type: Boolean,
                 default: true,
                 required: false
-            }
+            },
+            currentUser: Object,
         },
         data () {
             return {
@@ -135,7 +142,8 @@
                     value: null,
                     series: null,
                     total_canceled: null,
-                    observations: null
+                    observations: null,
+                    establishment_id: this.currentUser && this.currentUser.establishment_id ? this.currentUser.establishment_id : 'all'
                 },
                 totals: {
                     total_pen: 0,
@@ -146,6 +154,7 @@
                 records: [],
                 pagination: {},
                 series: [],
+                establishments: [],
                 isVisible: false,
                 search_by_plate:false,
                 recordItem: null
@@ -169,6 +178,7 @@
 
             await this.$http.get(`/${_.head(column_resource)}/columns2`).then((response) => {
                 this.series = response.data.series
+                this.establishments = response.data.establishments
             });
 
 

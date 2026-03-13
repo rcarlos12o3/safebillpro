@@ -153,6 +153,15 @@
                             <el-input v-model="search.plate_numbers" clearable></el-input>
                         </div>
                     </div>
+                    <div class="col-lg-4 col-md-4 col-sm-12 pb-2">
+                        <div class="form-group">
+                            <label class="control-label">Tienda</label>
+                            <el-select v-model="search.establishment_id" filterable clearable>
+                                <el-option value="all" label="Todas"></el-option>
+                                <el-option v-for="option in establishments" :key="option.id" :value="option.id" :label="option.description"></el-option>
+                            </el-select>
+                        </div>
+                    </div>
                     <div class="col-lg-2 col-md-2 col-sm-12 mt-4">
                         <div class="form-group"  >
                             <el-checkbox v-model="search.pending_payment" >PEND. DE PAGO</el-checkbox>
@@ -230,6 +239,7 @@ import {mapActions, mapState} from "vuex/dist/vuex.mjs";
 export default {
         props: {
             resource: String,
+            currentUser: Object,
         },
         data () {
             return {
@@ -362,7 +372,8 @@ export default {
                     d_start:null,
                     d_end:null,
                     pending_payment:false,
-                    observations: null
+                    observations: null,
+                    establishment_id: this.currentUser && this.currentUser.establishment_id ? this.currentUser.establishment_id : 'all'
                 }
             },
             changeDocumentType(){

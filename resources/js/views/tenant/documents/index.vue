@@ -110,7 +110,10 @@
                         </el-dropdown-menu>
                     </el-dropdown>
                 </div>
-                <data-table :resource="resource">
+                <data-table
+                    :resource="resource"
+                    :current-user="currentUser"
+                >
 
                     <tr slot="heading">
                         <!-- <th>#</th> -->
@@ -593,7 +596,9 @@ export default {
         'configuration',
         'userPermissionEditCpe',
         'view_apiperudev_validator_cpe',
-        'view_validator_cpe'
+        'view_validator_cpe',
+        'currentUser',
+        'establishments'
     ],
     computed: {
         ...mapState([

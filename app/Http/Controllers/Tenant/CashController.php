@@ -17,6 +17,7 @@ use App\Models\Tenant\SaleNoteItem;
 use App\Models\Tenant\SaleNote;
 use App\Models\Tenant\Document;
 use App\Models\Tenant\User;
+use App\Models\Tenant\Establishment;
 use Barryvdh\DomPDF\Facade as PDF;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -43,7 +44,10 @@ class CashController extends Controller
 
     public function index()
     {
-        return view('tenant.cash.index');
+        $user = auth()->user();
+        $establishments = Establishment::all();
+
+        return view('tenant.cash.index', compact('user', 'establishments'));
     }
 
     public function columns()
@@ -58,6 +62,11 @@ class CashController extends Controller
         $records = Cash::withOut(['cash_documents'])
                         ->where($request->column, 'like', "%{$request->value}%")
                         ->whereTypeUser()
+                        ->when($request->establishment_id && $request->establishment_id !== 'all', function($query) use ($request) {
+                            return $query->whereHas('user', function($q) use ($request) {
+                                $q->where('establishment_id', $request->establishment_id);
+                            });
+                        })
                         ->orderBy('date_opening', 'DESC')
                         ->orderBy('time_opening','desc');
 
@@ -87,6 +96,12 @@ class CashController extends Controller
         }
 
         return compact('users', 'user');
+    }
+
+    public function establishments()
+    {
+        $establishments = Establishment::all();
+        return $establishments;
     }
 
     public function opening_cash()
