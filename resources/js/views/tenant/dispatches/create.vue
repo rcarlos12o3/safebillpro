@@ -219,6 +219,8 @@
                                         <span class="text-danger"> *</span>
                                         <a href="#" v-if="form.transfer_reason_type_id !== '02'"
                                            @click.prevent="showDialogOriginAddressForm = true">[+ Nuevo]</a>
+                                        <a href="#" v-if="form.transfer_reason_type_id === '02' && form.customer_id"
+                                           @click.prevent="openOriginAddressDialogForPurchase">[+ Nuevo]</a>
                                     </label>
                                     <el-select v-model="form.origin_address_id" placeholder="Seleccionar punto de partida">
                                         <el-option v-for="option in origin_addresses" :key="option.id"
@@ -239,6 +241,8 @@
                                             @click.prevent="openDeliveryAddressDialog">[+ Nuevo]</a>
                                         <a href="#" v-if="form.transfer_reason_type_id === '04'"
                                             @click.prevent="openDeliveryAddressDialog">[+ Nuevo]</a>
+                                        <a href="#" v-if="form.transfer_reason_type_id === '02'"
+                                            @click.prevent="openDeliveryAddressDialogForPurchase">[+ Nuevo]</a>
                                     </label>
                                     <el-select v-model="form.delivery_address_id"
                                         placeholder="Seleccionar punto de llegada"
@@ -867,7 +871,7 @@
             <transport-form :showDialog.sync="showDialogTransportForm" @success="successTransport"></transport-form>
     
             <origin-address-form :showDialog.sync="showDialogOriginAddressForm"
-                                 :establishmentId="originAddressForDelivery ? null : form.establishment_id"
+                                 :establishmentId="(originAddressForDelivery && !originAddressForDeliveryInPurchase) ? null : form.establishment_id"
                 @success="successOriginAddress"></origin-address-form>
     
             <delivery-address-form :showDialog.sync="showDialogDeliveryAddressForm" title="Nuevo punto de llegada"
@@ -984,6 +988,8 @@ export default {
             showDialogOriginAddressForm: false,
             showDialogDeliveryAddressForm: false,
             originAddressForDelivery: false,
+            deliveryAddressForOriginInPurchase: false,
+            originAddressForDeliveryInPurchase: false,
             IdLoteSelected: false,
             showDialogLots: false,
             min_qty: 0.0001,
@@ -1121,8 +1127,19 @@ export default {
     watch: {
         showDialogOriginAddressForm(value) {
             // Resetear la bandera cuando se cierra el diálogo
-            if (!value && this.originAddressForDelivery) {
-                this.originAddressForDelivery = false;
+            if (!value) {
+                if (this.originAddressForDelivery) {
+                    this.originAddressForDelivery = false;
+                }
+                if (this.originAddressForDeliveryInPurchase) {
+                    this.originAddressForDeliveryInPurchase = false;
+                }
+            }
+        },
+        showDialogDeliveryAddressForm(value) {
+            // Resetear la bandera cuando se cierra el diálogo
+            if (!value && this.deliveryAddressForOriginInPurchase) {
+                this.deliveryAddressForOriginInPurchase = false;
             }
         }
     },
@@ -2041,6 +2058,11 @@ export default {
                 this.form.delivery_address_id = id;
                 await this.getAddressesOtherEstablishment(this.form.establishment_id);
                 this.originAddressForDelivery = false;
+            } else if (this.originAddressForDeliveryInPurchase) {
+                // Se está usando para punto de llegada en motivo '02' (compra)
+                this.form.delivery_address_id = id;
+                await this.getDeliveryAddressesFromEstablishment(this.form.establishment_id);
+                this.originAddressForDeliveryInPurchase = false;
             } else {
                 // Se está usando para punto de partida (uso normal)
                 this.form.origin_address_id = id;
@@ -2048,11 +2070,18 @@ export default {
             }
         },
         async successDeliveryAddress(id) {
-            this.form.delivery_address_id = id;
-            if (this.form.transfer_reason_type_id === '04') {
-                await this.getAddressesOtherEstablishment(this.form.establishment_id);
+            if (this.deliveryAddressForOriginInPurchase) {
+                // Se está usando para punto de partida en motivo '02' (compra)
+                this.form.origin_address_id = id;
+                await this.getOriginAddressesFromCustomer(this.form.customer_id);
+                this.deliveryAddressForOriginInPurchase = false;
             } else {
-                await this.getDeliveryAddresses(this.form.customer_id);
+                this.form.delivery_address_id = id;
+                if (this.form.transfer_reason_type_id === '04') {
+                    await this.getAddressesOtherEstablishment(this.form.establishment_id);
+                } else {
+                    await this.getDeliveryAddresses(this.form.customer_id);
+                }
             }
         },
         openDeliveryAddressDialog() {
@@ -2062,6 +2091,16 @@ export default {
             } else {
                 this.showDialogDeliveryAddressForm = true;
             }
+        },
+        openOriginAddressDialogForPurchase() {
+            // Para compra: crear dirección del proveedor (cliente) que se usa como origen
+            this.deliveryAddressForOriginInPurchase = true;
+            this.showDialogDeliveryAddressForm = true;
+        },
+        openDeliveryAddressDialogForPurchase() {
+            // Para compra: crear dirección del establecimiento que se usa como destino
+            this.originAddressForDeliveryInPurchase = true;
+            this.showDialogOriginAddressForm = true;
         },
         async getOriginAddresses(establishment_id) {
             await this.$http.get(`/${this.resource}/get_origin_addresses/${establishment_id}`)
