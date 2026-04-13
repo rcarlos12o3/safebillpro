@@ -54,9 +54,11 @@
                             aria-expanded="false"><i class="fa fa-money-bill-wave-alt"></i>
                         Reporte de Pagos <span class="caret"></span></button>
                     <!-- validadores apiperu  -->
-                    <a href="#" @click.prevent="showDialogApiPeruDevValidate = true"
+                    <!-- <a href="#" @click.prevent="showDialogApiPeruDevValidate = true"
                        v-if="view_apiperudev_validator_cpe"
-                       class="btn btn-custom btn-sm  mt-2 mr-2"><i class="fa fa-check"></i> Validación masiva</a>
+                       class="btn btn-custom btn-sm  mt-2 mr-2"><i class="fa fa-check"></i> Validación masiva</a> -->
+                    <a href="#" @click.prevent="showDialogSunatValidate = true"
+                       class="btn btn-success btn-sm  mt-2 mr-2"><i class="fa fa-check-double"></i> Validación SUNAT</a>
                     <a href="#" @click.prevent="showDialogValidate = true" v-if="view_validator_cpe"
                        class="btn btn-custom btn-sm  mt-2 mr-2"><i class="fa fa-file"></i> Validar CPE</a>
 
@@ -556,6 +558,8 @@
 
             <massive-validate-cpe :showDialogValidate.sync="showDialogApiPeruDevValidate"></massive-validate-cpe>
 
+            <massive-validate-sunat :showDialogValidate.sync="showDialogSunatValidate"></massive-validate-sunat>
+
             <document-import-excel :showDialog.sync="showImportExcelDialog"></document-import-excel>
 
             <document-retention :showDialog.sync="showDialogRetention"
@@ -579,6 +583,7 @@ import ReportPayment from './partials/report_payment.vue'
 import ReportPaymentComplete from './partials/report_payment_complete.vue'
 import DocumentValidate from './partials/validate.vue';
 import MassiveValidateCpe from '../../../../../modules/ApiPeruDev/Resources/assets/js/components/MassiveValidateCPE';
+import MassiveValidateSunat from '../../../../../modules/ApiPeruDev/Resources/assets/js/components/MassiveValidateSunat';
 import {mapActions, mapState} from "vuex/dist/vuex.mjs";
 import DocumentRetention from './partials/retention'
 import moment from 'moment'
@@ -617,12 +622,14 @@ export default {
         ReportPaymentComplete,
         DocumentValidate,
         MassiveValidateCpe,
+        MassiveValidateSunat,
         DocumentImportExcel,
         DocumentRetention
     },
     data() {
         return {
             showDialogApiPeruDevValidate: false,
+            showDialogSunatValidate: false,
             showDialogValidate: false,
             showDialogReportPayment: false,
             showDialogReportPaymentComplete: false,
