@@ -1108,6 +1108,30 @@ class Facturalo
 
     public function senderXmlSignedSummary()
     {
+        if ($this->isNewPseProvider()) {
+            $newService = new NewProviderService($this->company);
+            $response   = $newService->processDocument($this->document, $this->type);
+
+            $this->document->update([
+                'send_to_pse'           => true,
+                'response_send_cdr_pse' => json_encode($response),
+            ]);
+
+            if (!empty($response['ticket'])) {
+                $this->updateTicket($response['ticket']);
+            }
+
+            $this->updateState(self::SENT);
+            if (in_array($this->document->summary_status_type_id, ['1', '2'])) {
+                $this->updateStateDocuments(self::SENT);
+            } else {
+                $this->updateStateDocuments(self::CANCELING);
+            }
+
+            $this->response = ['sent' => true];
+            return;
+        }
+
         if($this->hasPseSend()) {
             $giorService = new GiorService();
             $response = $giorService->sendXmlSigned($this->document->filename, $this->xmlSigned, true);
@@ -1156,6 +1180,47 @@ class Facturalo
 
     public function pseQuerySummary()
     {
+        if ($this->isNewPseProvider()) {
+            $stored = json_decode($this->document->response_send_cdr_pse, true);
+            $providerDocId = $stored['provider_doc_id'] ?? null;
+
+            if (!$providerDocId) {
+                throw new Exception('PSE NuevoProveedor - No se encontró el ID del documento en el proveedor para consultar el CDR.');
+            }
+
+            $newService = new NewProviderService($this->company);
+            $response   = $newService->querySummaryById((int) $providerDocId, $this->type);
+
+            $cdrCode = $response['code'] ?? null;
+
+            if ($cdrCode == 0) {
+                if (in_array($this->document->summary_status_type_id, ['1', '2'])) {
+                    $this->updateStateDocuments(self::ACCEPTED);
+                } else {
+                    $this->updateStateDocuments(self::VOIDED);
+                }
+                $this->updateState(self::ACCEPTED);
+            } elseif ($cdrCode == 99) {
+                $this->updateState(self::REJECTED);
+                $this->updateStateDocuments(self::REGISTERED);
+            }
+
+            $this->response = [
+                'sent'        => true,
+                'code'        => $cdrCode,
+                'description' => 'PSE - ' . ($response['message'] ?? ''),
+                'notes'       => [],
+                'is_accepted' => ($cdrCode == 0),
+                'status_code' => $cdrCode,
+            ];
+
+            $this->document->update([
+                'soap_shipping_response' => $this->response,
+                'response_send_cdr_pse'  => json_encode($response),
+            ]);
+            return;
+        }
+
         $giorService = new GiorService();
         $response = $giorService->querySummary($this->document->filename);
         if(!$response['success']) {
