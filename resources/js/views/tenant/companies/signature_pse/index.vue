@@ -30,51 +30,55 @@
                     </div>
 
                     <template v-if="form.send_document_to_pse">
-                        <!-- <div class="col-md-3 mt-3">
-                            <div class="form-group" :class="{'has-danger': errors.client_id_pse}">
-                                <label class="control-label">ID Cliente <span class="text-danger">*</span>
-                                </label>
-                                <el-input v-model="form.client_id_pse"></el-input>
-                                <small class="form-control-feedback" v-if="errors.client_id_pse" v-text="errors.client_id_pse[0]"></small>
-                            </div>
-                        </div> -->
-                        <!-- <div class="col-md-12 mt-3">
-                            <div class="form-group" :class="{'has-danger': errors.url_login_pse}">
-                                <label class="control-label">Url autenticación <span class="text-danger">*</span></label>
-                                <el-input v-model="form.url_login_pse"></el-input>
-                                <small class="form-control-feedback" v-if="errors.url_login_pse" v-text="errors.url_login_pse[0]"></small>
-                            </div>
-                        </div> -->
-                        <div class="col-md-6 mt-3">
-                            <div class="form-group" :class="{'has-danger': errors.user_pse}">
-                                <label class="control-label">Usuario autenticación <span class="text-danger">*</span></label>
-                                <el-input v-model="form.user_pse"></el-input>
-                                <small class="form-control-feedback" v-if="errors.user_pse" v-text="errors.user_pse[0]"></small>
-                            </div>
+
+                        <!-- Selector de proveedor -->
+                        <div class="col-md-12 mt-2 mb-3">
+                            <label class="control-label d-block mb-2">Proveedor PSE</label>
+                            <el-radio-group v-model="pse_type">
+                                <el-radio label="gior">ValidaPSE (GiorTechnology)</el-radio>
+                                <el-radio label="nuevo">Nuevo Proveedor</el-radio>
+                            </el-radio-group>
                         </div>
-                        <div class="col-md-6 mt-3">
-                            <div class="form-group" :class="{'has-danger': errors.password_pse}">
-                                <label class="control-label">Contraseña autenticación <span class="text-danger">*</span></label>
-                                <el-input v-model="form.password_pse" show-password></el-input>
-                                <small class="form-control-feedback" v-if="errors.password_pse" v-text="errors.password_pse[0]"></small>
+
+                        <!-- Campos ValidaPSE -->
+                        <template v-if="pse_type === 'gior'">
+                            <div class="col-md-6 mt-3">
+                                <div class="form-group" :class="{'has-danger': errors.user_pse}">
+                                    <label class="control-label">Usuario autenticación <span class="text-danger">*</span></label>
+                                    <el-input v-model="form.user_pse"></el-input>
+                                    <small class="form-control-feedback" v-if="errors.user_pse" v-text="errors.user_pse[0]"></small>
+                                </div>
                             </div>
-                        </div>
-                        <!-- <div class="col-md-12 mt-3">
-                            <div class="form-group" :class="{'has-danger': errors.url_signature_pse}">
-                                <label class="control-label">Url firma digital del documento <span class="text-danger">*</span></label>
-                                <el-input v-model="form.url_signature_pse"></el-input>
-                                <div class="sub-title text-muted"><small>Ejemplo: https://pse.com/firma-digital</small></div>
-                                <small class="form-control-feedback" v-if="errors.url_signature_pse" v-text="errors.url_signature_pse[0]"></small>
+                            <div class="col-md-6 mt-3">
+                                <div class="form-group" :class="{'has-danger': errors.password_pse}">
+                                    <label class="control-label">Contraseña autenticación <span class="text-danger">*</span></label>
+                                    <el-input v-model="form.password_pse" show-password></el-input>
+                                    <small class="form-control-feedback" v-if="errors.password_pse" v-text="errors.password_pse[0]"></small>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-12 mt-2">
-                            <div class="form-group" :class="{'has-danger': errors.url_send_cdr_pse}">
-                                <label class="control-label">Url envio CDR <span class="text-danger">*</span></label>
-                                <el-input v-model="form.url_send_cdr_pse"></el-input>
-                                <div class="sub-title text-muted"><small>Ejemplo: https://pse.com/envio-cdr</small></div>
-                                <small class="form-control-feedback" v-if="errors.url_send_cdr_pse" v-text="errors.url_send_cdr_pse[0]"></small>
+                        </template>
+
+                        <!-- Campos Nuevo Proveedor -->
+                        <template v-if="pse_type === 'nuevo'">
+                            <div class="col-md-12 mt-3">
+                                <div class="form-group" :class="{'has-danger': errors.url_login_pse}">
+                                    <label class="control-label">URL base del proveedor <span class="text-danger">*</span></label>
+                                    <el-input v-model="form.url_login_pse" placeholder="https://api-efact.papeat.com"></el-input>
+                                    <small class="text-muted">Sin barra al final. Ejemplo: https://api-efact.papeat.com</small>
+                                    <small class="form-control-feedback" v-if="errors.url_login_pse" v-text="errors.url_login_pse[0]"></small>
+                                </div>
                             </div>
-                        </div> -->
+                            <div class="col-md-12 mt-3">
+                                <div class="form-group" :class="{'has-danger': errors.password_pse}">
+                                    <label class="control-label">Token de acceso <span class="text-danger">*</span></label>
+                                    <el-input v-model="form.password_pse" show-password
+                                        placeholder="eyJ0eXAiOiJKV1Qi..."></el-input>
+                                    <small class="text-muted">Token generado en el panel del proveedor. Se usa directamente como Bearer.</small>
+                                    <small class="form-control-feedback" v-if="errors.password_pse" v-text="errors.password_pse[0]"></small>
+                                </div>
+                            </div>
+                        </template>
+
                     </template>
                 </div>
                 <div class="form-actions text-right pt-2">
@@ -95,15 +99,28 @@ export default {
             form: {},
             errors: {},
             loading_submit: false,
+            pse_type: 'gior',
         }
     },
     created() {
         this.initForm()
         this.getData()
     },
+    watch: {
+        pse_type(val) {
+            if (val === 'gior') {
+                // Limpiar campos del nuevo proveedor para que Facturalo use GiorService
+                this.form.url_login_pse = null
+                this.form.client_id_pse = null
+                this.form.user_pse      = null
+            } else {
+                // Limpiar campos de ValidaPSE
+                this.form.user_pse = null
+            }
+        }
+    },
     methods: {
         submit(){
-
             this.loading_submit = true
             this.$http.post(`/${this.resource}/store-send-pse`, this.form)
                 .then(response => {
@@ -123,27 +140,25 @@ export default {
                 .then(() => {
                     this.loading_submit = false
                 })
-
         },
         initForm(){
-
             this.form = {
                 send_document_to_pse : false,
-                url_signature_pse : null,
-                url_send_cdr_pse : null,
-                client_id_pse: null,
-                url_login_pse: null,
-                password_pse: null,
-                user_pse: null,
+                url_signature_pse    : null,
+                url_send_cdr_pse     : null,
+                client_id_pse        : null,
+                url_login_pse        : null,
+                password_pse         : null,
+                user_pse             : null,
             }
-
             this.errors = {}
-
         },
         getData() {
             this.$http.get(`/${this.resource}/record-send-pse`)
                 .then(response => {
                     this.form = response.data
+                    // Determinar qué proveedor está activo según url_login_pse
+                    this.pse_type = this.form.url_login_pse ? 'nuevo' : 'gior'
                 })
         },
     }

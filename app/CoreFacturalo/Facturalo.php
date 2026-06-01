@@ -39,6 +39,7 @@ use App\Models\Tenant\PurchaseSettlement;
 use App\CoreFacturalo\Services\Helpers\SendDocumentPse;
 use Modules\Finance\Traits\FilePaymentTrait;
 use Modules\PseService\Http\Gior\Service as GiorService;
+use Modules\PseService\Http\NewProvider\Service as NewProviderService;
 
 
 /**
@@ -270,6 +271,15 @@ class Facturalo
      */
     public function servicePseSendXml()
     {
+        if ($this->isNewPseProvider()) {
+            // El nuevo proveedor genera y firma el XML internamente; aquí solo indicamos el sentinel.
+            return [
+                'xml_signed' => null,
+                'hash'       => null,
+                'code'       => 'NEW_PROVIDER',
+            ];
+        }
+
         if($this->hasPseSend()) {
             $giorService = new GiorService();
             $giorService->getToken();
@@ -867,6 +877,11 @@ class Facturalo
         return $this->company->send_document_to_pse;
     }
 
+    public function isNewPseProvider(): bool
+    {
+        return $this->hasPseSend() && !empty($this->company->url_login_pse);
+    }
+
 
     /**
      * deprecated
@@ -905,6 +920,29 @@ class Facturalo
 
     public function onlySenderXmlSignedBill($service_pse_code = null)
     {
+        if ($service_pse_code === 'NEW_PROVIDER') {
+            $newService = new NewProviderService($this->company);
+            $response   = $newService->processDocument($this->document, $this->type);
+
+            $code        = $response['code'] ?? null;
+            $description = 'PSE - ' . ($response['message'] ?? '');
+
+            $this->document->update([
+                'send_to_pse'           => true,
+                'response_send_cdr_pse' => json_encode($response),
+            ]);
+
+            $this->response = [
+                'sent'        => true,
+                'code'        => $code,
+                'description' => $description,
+                'notes'       => [],
+            ];
+
+            $this->validationCodeResponse($code, $description);
+            return;
+        }
+
         if($service_pse_code != null) {
             $giorService = new GiorService();
             $response = $giorService->sendXmlSigned($this->document->filename, $this->xmlSigned);
