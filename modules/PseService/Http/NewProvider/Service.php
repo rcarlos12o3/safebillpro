@@ -3,7 +3,6 @@
 namespace Modules\PseService\Http\NewProvider;
 
 use App\Models\Tenant\Company;
-use App\Models\Tenant\Document;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Exception;
@@ -26,7 +25,6 @@ final class Service
 
     private function getToken(): string
     {
-        // Personal access token — se configura una vez, se usa directo como Bearer.
         $token = $this->company->password_pse;
 
         if (empty($token)) {
@@ -37,17 +35,19 @@ final class Service
     }
 
     /**
-     * Orquesta: crear documento JSON → enviar a SUNAT → polling si queda pendiente.
-     * Devuelve la misma estructura que GiorService para compatibilidad con Facturalo.
+     * Orquesta: crear documento JSON → enviar a SUNAT → polling si aplica.
+     * Para summaries y voided es siempre asíncrono — se devuelve el ticket sin polling.
+     *
+     * @param  mixed  $document  Puede ser Document, Summary u otro modelo de Facturalo
+     * @param  string $facturaloType  'invoice'|'credit'|'debit'|'summary'|'voided'|'dispatch'
      */
-    public function processDocument(Document $document, string $facturaloType): array
+    public function processDocument($document, string $facturaloType): array
     {
         $token = $this->getToken();
 
         Log::info('PSE NuevoProveedor - processDocument', [
             'type'     => $facturaloType,
-            'doc_type' => $document->document_type_id,
-            'filename' => $document->filename,
+            'filename' => $document->filename ?? null,
         ]);
 
         $endpoints = $this->resolveEndpoints($facturaloType);
@@ -56,15 +56,31 @@ final class Service
         $id     = $this->createDocument($payload, $endpoints['create'], $token);
         $result = $this->sendToSunat($id, $endpoints['send'], $token);
 
-        // CDR pendiente por ticket
-        if (!empty($result['ticket']) && !empty($endpoints['poll'])) {
-            $result = $this->pollCdrById($id, $endpoints['poll'], $token);
-        } elseif (!empty($result['ticket'])) {
-            // Factura/boleta: CDR via endpoint genérico
+        // Summaries/voided son siempre asíncronos — guardar el id del proveedor en el ticket
+        // para consultar el CDR luego con querySummary().
+        if (!empty($endpoints['async'])) {
+            $result['provider_doc_id'] = $id;
+            return $result;
+        }
+
+        // Para invoices/notas: polling si CDR quedó pendiente
+        if (!empty($result['ticket'])) {
             $result = $this->pollDocumentCdr($document, $token);
         }
 
         return $result;
+    }
+
+    /**
+     * Consulta el CDR de un summary/voided por su ID de proveedor.
+     * Llamado desde Facturalo::pseQuerySummary() para el nuevo proveedor.
+     */
+    public function querySummaryById(int $providerDocId, string $facturaloType): array
+    {
+        $token     = $this->getToken();
+        $endpoints = $this->resolveEndpoints($facturaloType);
+
+        return $this->pollCdrById($providerDocId, $endpoints['poll'], $token);
     }
 
     // -------------------------------------------------------------------------
@@ -82,30 +98,35 @@ final class Service
                     'create' => "{$base}/api/v2/electronic-note",
                     'send'   => "{$base}/api/v2/electronic-note/send",
                     'poll'   => null,
+                    'async'  => false,
                 ];
             case 'voided':
                 return [
                     'create' => "{$base}/api/v1/voided",
                     'send'   => "{$base}/api/v1/voided/send",
                     'poll'   => "{$base}/api/v1/voided/ask",
+                    'async'  => true,
                 ];
             case 'summary':
                 return [
-                    'create' => "{$base}/api/v1/summary",
-                    'send'   => "{$base}/api/v1/summary/send",
-                    'poll'   => "{$base}/api/v1/summary/ask",
+                    'create' => "{$base}/api/v2/summary",
+                    'send'   => "{$base}/api/v2/summary/send",
+                    'poll'   => "{$base}/api/v2/summary/ask",
+                    'async'  => true,
                 ];
             case 'dispatch':
                 return [
                     'create' => "{$base}/api/v2/despatch",
                     'send'   => "{$base}/api/v2/despatch/send",
                     'poll'   => "{$base}/api/v2/despatch/consult",
+                    'async'  => false,
                 ];
             default: // invoice, boleta
                 return [
                     'create' => "{$base}/api/v2/invoice",
                     'send'   => "{$base}/api/v2/invoice/send",
-                    'poll'   => null, // usa pollDocumentCdr
+                    'poll'   => null,
+                    'async'  => false,
                 ];
         }
     }
@@ -114,22 +135,22 @@ final class Service
     // Payload builders
     // -------------------------------------------------------------------------
 
-    private function buildPayload(Document $document, string $facturaloType): array
+    private function buildPayload($document, string $facturaloType): array
     {
         switch ($facturaloType) {
             case 'credit':
             case 'debit':
                 return $this->buildNotePayload($document);
+            case 'summary':
+                return $this->buildSummaryPayload($document);
             default:
                 return $this->buildInvoicePayload($document);
         }
     }
 
-    private function buildInvoicePayload(Document $document): array
+    private function buildInvoicePayload($document): array
     {
-        $customer = $document->customer;
-
-        $payload = [
+        return [
             'idTransaccionRequest' => $document->series . '-' . $document->number,
             'versionUBL'           => $document->ubl_version ?? '2.1',
             'tipoOperacion'        => '0101',
@@ -145,15 +166,13 @@ final class Service
             'totalImpuestos'       => (float) ($document->total_taxes ?? 0),
             'totalValorVenta'      => (float) ($document->total_value ?? 0),
             'totalVenta'           => (float) ($document->total ?? 0),
-            'cliente'              => $this->buildCliente($customer),
+            'cliente'              => $this->buildCliente($document->customer),
             'detallesInvoice'      => $this->buildItems($document),
             'plataforma'           => ['codigoPlataforma' => $this->company->user_pse ?? ''],
         ];
-
-        return $payload;
     }
 
-    private function buildNotePayload(Document $document): array
+    private function buildNotePayload($document): array
     {
         $payload = $this->buildInvoicePayload($document);
         unset($payload['tipoOperacion']);
@@ -172,8 +191,67 @@ final class Service
         return $payload;
     }
 
-    private function buildCliente(object $customer): array
+    private function buildSummaryPayload($summary): array
     {
+        // Extraer el correlativo del identifier (ej: "RC-20260601-1" → 1)
+        $parts      = explode('-', $summary->identifier ?? '');
+        $correlativo = (int) end($parts);
+
+        return [
+            'idTransaccionRequest' => $summary->identifier ?? $summary->filename,
+            'versionUBL'           => $summary->ubl_version ?? '2.0',
+            'correlativo'          => $correlativo,
+            'fechaGeneracion'      => $summary->date_of_issue->format('Y-m-d'),
+            'fechaResumen'         => $summary->date_of_reference
+                                        ? $summary->date_of_reference->format('Y-m-d')
+                                        : $summary->date_of_issue->format('Y-m-d'),
+            'plataforma'           => ['codigoPlataforma' => $this->company->user_pse ?? ''],
+            'detallesSummary'      => $this->buildSummaryItems($summary),
+        ];
+    }
+
+    private function buildSummaryItems($summary): array
+    {
+        return $summary->documents->map(function ($summaryDoc) {
+            $doc = $summaryDoc->document;
+            if (!$doc) return null;
+
+            $customer = $doc->customer;
+            $item = [
+                'serie'           => $doc->series,
+                'correlativo'     => (int) $doc->number,
+                'tipoDocumento'   => $doc->document_type_id,
+                'tipoCliente'     => $customer->identity_document_type_id ?? '-',
+                'clienteNro'      => $customer->number ?? '',
+                'estado'          => '1',
+                'totalOGravadas'  => (float) ($doc->total_taxed ?? 0),
+                'totalOExoneradas'=> (float) ($doc->total_exonerated ?? 0),
+                'totalOInafectas' => (float) ($doc->total_unaffected ?? 0),
+                'totalIcbper'     => (float) ($doc->total_plastic_bag_taxes ?? 0),
+                'totalImpuestos'  => (float) ($doc->total_taxes ?? 0),
+                'totalDescuentos' => (float) ($doc->total_discount ?? 0),
+                'totalValorVenta' => (float) ($doc->total_value ?? 0),
+                'totalVenta'      => (float) ($doc->total ?? 0),
+            ];
+
+            // Nota crédito/débito: incluir referencia al documento afectado
+            if (in_array($doc->document_type_id, ['07', '08']) && $doc->note) {
+                $note = $doc->note;
+                $item['tipoDocumentoReferencia'] = $note->affected_document_type_id ?? null;
+                $item['documentoReferencia']     = ($note->affected_document_series ?? '')
+                                                 . '-' . ($note->affected_document_number ?? '');
+            }
+
+            return $item;
+        })->filter()->values()->toArray();
+    }
+
+    private function buildCliente($customer): array
+    {
+        if (is_null($customer)) {
+            return ['tipoDoc' => '-', 'numDoc' => '', 'razonSocial' => ''];
+        }
+
         $cliente = [
             'tipoDoc'     => $customer->identity_document_type_id ?? '-',
             'numDoc'      => $customer->number ?? '',
@@ -187,7 +265,7 @@ final class Service
         return $cliente;
     }
 
-    private function buildItems(Document $document): array
+    private function buildItems($document): array
     {
         return $document->items->map(function ($docItem) {
             $item = $docItem->item;
@@ -255,7 +333,7 @@ final class Service
             ];
         }
 
-        // CDR pendiente por ticket
+        // CDR pendiente por ticket (normal en facturas y obligatorio en summaries)
         if (isset($data['ticket']) && !isset($data['cdrCode'])) {
             return [
                 'success' => true,
@@ -272,14 +350,14 @@ final class Service
     }
 
     /** Polling para facturas/boletas: POST /api/v2/document/cdr */
-    private function pollDocumentCdr(Document $document, string $token, int $maxAttempts = 5): array
+    private function pollDocumentCdr($document, string $token, int $maxAttempts = 5): array
     {
         $url  = $this->baseUrl() . '/api/v2/document/cdr';
         $body = [
-            'serie'          => $document->series,
-            'correlativo'    => (string) $document->number,
-            'tipoDocumento'  => $document->document_type_id,
-            'fechaEmision'   => $document->date_of_issue->format('Y-m-d'),
+            'serie'         => $document->series,
+            'correlativo'   => (string) $document->number,
+            'tipoDocumento' => $document->document_type_id,
+            'fechaEmision'  => $document->date_of_issue->format('Y-m-d'),
         ];
 
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
@@ -313,11 +391,11 @@ final class Service
         ];
     }
 
-    /** Polling para voided/summary/despatch: POST /api/v1/{type}/ask/{id} */
-    private function pollCdrById(int $id, string $pollUrl, string $token, int $maxAttempts = 5): array
+    /** Polling por ID de proveedor: POST /api/v2/summary/ask/{id} */
+    public function pollCdrById(int $id, string $pollUrl, string $token, int $maxAttempts = 5): array
     {
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-            sleep(10);
+            sleep(15);
 
             $response = $this->http->post("{$pollUrl}/{$id}", [
                 'headers' => ['Authorization' => 'Bearer ' . $token],

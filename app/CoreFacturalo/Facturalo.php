@@ -882,6 +882,11 @@ class Facturalo
         return $this->hasPseSend() && !empty($this->company->url_login_pse);
     }
 
+    public function isNewPseProviderAsync(): bool
+    {
+        return $this->isNewPseProvider() && in_array($this->type, ['summary', 'voided']);
+    }
+
 
     /**
      * deprecated
@@ -924,13 +929,33 @@ class Facturalo
             $newService = new NewProviderService($this->company);
             $response   = $newService->processDocument($this->document, $this->type);
 
-            $code        = $response['code'] ?? null;
-            $description = 'PSE - ' . ($response['message'] ?? '');
-
             $this->document->update([
                 'send_to_pse'           => true,
                 'response_send_cdr_pse' => json_encode($response),
             ]);
+
+            // Summaries/voided son asíncronos: SUNAT no entrega CDR inmediato.
+            // Se guarda el ticket y se marca como SENT para consultar después.
+            if (!empty($response['ticket'])) {
+                $this->document->update(['ticket' => $response['ticket']]);
+                $this->updateState(self::SENT);
+
+                if ($this->type === 'summary') {
+                    if (in_array($this->document->summary_status_type_id, ['1', '2'])) {
+                        $this->updateStateDocuments(self::SENT);
+                    } else {
+                        $this->updateStateDocuments(self::CANCELING);
+                    }
+                } else {
+                    $this->updateStateDocuments(self::CANCELING);
+                }
+
+                $this->response = ['sent' => true];
+                return;
+            }
+
+            $code        = $response['code'] ?? null;
+            $description = 'PSE - ' . ($response['message'] ?? '');
 
             $this->response = [
                 'sent'        => true,
