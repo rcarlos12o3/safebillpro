@@ -217,12 +217,14 @@ final class Service
             $doc = $summaryDoc->document;
             if (!$doc) return null;
 
-            $customer = $doc->customer;
+            $customer  = $doc->customer;
+            $tipoMap   = ['1' => '1', '4' => '4', '6' => '6', '7' => '7', 'A' => '0'];
+            $tipoCliente = $tipoMap[$customer->identity_document_type_id ?? '-'] ?? '0';
             $item = [
                 'serie'           => $doc->series,
                 'correlativo'     => (int) $doc->number,
                 'tipoDocumento'   => $doc->document_type_id,
-                'tipoCliente'     => $customer->identity_document_type_id ?? '-',
+                'tipoCliente'     => $tipoCliente,
                 'clienteNro'      => $customer->number ?? '',
                 'estado'          => '1',
                 'totalOGravadas'  => (float) ($doc->total_taxed ?? 0),
@@ -281,18 +283,27 @@ final class Service
 
     private function buildCliente($customer): array
     {
-        if (is_null($customer)) {
-            return ['tipoDoc' => '-', 'numDoc' => '', 'razonSocial' => ''];
-        }
+        // Mapear tipo SUNAT → código que acepta el proveedor
+        $tipoMap = ['1' => '1', '4' => '4', '6' => '6', '7' => '7', 'A' => '0'];
+        $rawTipo  = $customer->identity_document_type_id ?? '-';
+        $tipo     = $tipoMap[$rawTipo] ?? '0';
 
         $cliente = [
-            'tipoDoc'     => $customer->identity_document_type_id ?? '-',
-            'numDoc'      => $customer->number ?? '',
-            'razonSocial' => $customer->name ?? '',
+            'tipoDocumento'   => $tipo,
+            'numeroDocumento' => $customer->number ?? '',
         ];
 
+        if ($tipo === '1') {
+            // DNI: el proveedor requiere nombres y apellidos por separado
+            $parts              = explode(' ', trim($customer->name ?? ''), 2);
+            $cliente['nombres']   = $parts[0] ?? '';
+            $cliente['apellidos'] = $parts[1] ?? '';
+        } else {
+            $cliente['razonSocial'] = $customer->name ?? '';
+        }
+
         if (!empty($customer->address)) {
-            $cliente['address'] = ['direccion' => $customer->address];
+            $cliente['direccion'] = $customer->address;
         }
 
         return $cliente;
