@@ -68,21 +68,23 @@ class Functions
 
     public static function identifier($soap_type_id, $date_of_issue, $model)
     {
-        $documents = $model::where('soap_type_id', $soap_type_id)
-                        ->where('date_of_issue', $date_of_issue)
-                        ->get();
-        $numeration = count($documents) + 1;
         $path = explode('\\', $model);
-        switch (array_pop($path)) {
-            case 'Voided':
-                $prefix = 'RA';
-                break;
-            default:
-                $prefix = 'RC';
-                break;
+        $prefix = array_pop($path) === 'Voided' ? 'RA' : 'RC';
+        $dateFormatted = Carbon::parse($date_of_issue)->format('Ymd');
+
+        $last = $model::where('soap_type_id', $soap_type_id)
+                      ->where('date_of_issue', $date_of_issue)
+                      ->orderByRaw('CAST(SUBSTRING_INDEX(identifier, \'-\', -1) AS UNSIGNED) DESC')
+                      ->value('identifier');
+
+        if ($last) {
+            $parts = explode('-', $last);
+            $numeration = ((int) end($parts)) + 1;
+        } else {
+            $numeration = 1;
         }
 
-        return join('-', [$prefix, Carbon::parse($date_of_issue)->format('Ymd'), $numeration]);
+        return join('-', [$prefix, $dateFormatted, $numeration]);
     }
 
     /**
