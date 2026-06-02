@@ -56,10 +56,10 @@ final class Service
         $id     = $this->createDocument($payload, $endpoints['create'], $token);
         $result = $this->sendToSunat($id, $endpoints['send'], $token);
 
-        // Summaries/voided son siempre asíncronos — guardar el id del proveedor en el ticket
-        // para consultar el CDR luego con querySummary().
+        // Summaries/voided son siempre asíncronos — guardar el id del registro de envío
+        // para consultar el CDR luego con querySummary() vía ask/{id}.
         if (!empty($endpoints['async'])) {
-            $result['provider_doc_id'] = $id;
+            $result['provider_doc_id'] = $result['send_doc_id'] ?? $id;
             return $result;
         }
 
@@ -336,13 +336,14 @@ final class Service
         // CDR pendiente por ticket (normal en facturas y obligatorio en summaries)
         if (isset($data['ticket']) && !isset($data['cdrCode'])) {
             return [
-                'success' => true,
-                'code'    => $data['sendCode'] ?? '0',
-                'ticket'  => $data['ticket'],
-                'message' => $data['sendDescription'] ?? 'Enviado - CDR pendiente',
-                'cdr'     => null,
-                'rejected'=> false,
-                'errors'  => null,
+                'success'     => true,
+                'code'        => $data['sendCode'] ?? '0',
+                'ticket'      => $data['ticket'],
+                'send_doc_id' => $data['id'] ?? null, // ID del registro de envío, usado en ask/{id}
+                'message'     => $data['sendDescription'] ?? 'Enviado - CDR pendiente',
+                'cdr'         => null,
+                'rejected'    => false,
+                'errors'      => null,
             ];
         }
 
