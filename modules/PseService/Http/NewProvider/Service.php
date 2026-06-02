@@ -201,7 +201,7 @@ final class Service
             'idTransaccionRequest' => $summary->identifier ?? $summary->filename,
             'versionUBL'           => $summary->ubl_version ?? '2.0',
             'correlativo'          => $correlativo,
-            'fechaGeneracion'      => $summary->date_of_issue->format('Y-m-d'),
+            'fechaGeneracion'      => \Carbon\Carbon::now()->format('Y-m-d'),
             'fechaResumen'         => $summary->date_of_reference
                                         ? $summary->date_of_reference->format('Y-m-d')
                                         : $summary->date_of_issue->format('Y-m-d'),
