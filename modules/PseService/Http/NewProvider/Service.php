@@ -313,21 +313,26 @@ final class Service
     {
         return $document->items->map(function ($docItem) {
             $item = $docItem->item;
-            return [
-                'codProducto'       => $item->internal_id ?? $item->code ?? null,
-                'unidad'            => $item->unit_type_id ?? 'NIU',
-                'cantidad'          => (float) $docItem->quantity,
-                'descripcion'       => $item->description ?? $item->name ?? '',
-                'mtoValorUnitario'  => (float) $docItem->unit_value,
-                'mtoBaseIgv'        => (float) $docItem->total_base_igv,
-                'porcentajeIgv'     => (float) $docItem->percentage_igv,
-                'igv'               => (float) $docItem->total_igv,
-                'tipAfeIgv'         => $docItem->affectation_igv_type_id ?? '10',
-                'totalImpuestos'    => (float) $docItem->total_taxes,
-                'mtoValorVenta'     => (float) $docItem->total_value,
-                'mtoPrecioUnitario' => (float) $docItem->unit_price,
-                'total'             => (float) $docItem->total,
+            $codigo = $item->internal_id ?? $item->code ?? null;
+            $result = [
+                'codigoProducto' => $codigo ?: 'S/C',
+                'descripcion'    => $item->description ?? $item->name ?? '',
+                'unidad'         => $item->unit_type_id ?? 'NIU',
+                'cantidad'       => (float) $docItem->quantity,
+                'afectacionIGV'  => $docItem->affectation_igv_type_id ?? '10',
+                'porcentajeIGV'  => (float) $docItem->percentage_igv,
+                'igv'            => (float) $docItem->total_igv,
+                'totalImpuestos' => (float) $docItem->total_taxes,
+                'montoBaseIgv'   => (float) $docItem->total_base_igv,
+                'valorVenta'     => (float) $docItem->total_value,
+                'valorUnitario'  => (float) $docItem->unit_value,
+                'precioUnitario' => (float) $docItem->unit_price,
             ];
+            $icbper = (float) ($docItem->total_plastic_bag_taxes ?? 0);
+            if ($icbper > 0) {
+                $result['icbper'] = $icbper;
+            }
+            return $result;
         })->toArray();
     }
 
