@@ -102,9 +102,9 @@ final class Service
                 ];
             case 'voided':
                 return [
-                    'create' => "{$base}/api/v1/voided",
-                    'send'   => "{$base}/api/v1/voided/send",
-                    'poll'   => "{$base}/api/v1/voided/ask",
+                    'create' => "{$base}/api/v2/voided",
+                    'send'   => "{$base}/api/v2/voided/send",
+                    'poll'   => "{$base}/api/v2/voided/ask",
                     'async'  => true,
                 ];
             case 'summary':
@@ -143,6 +143,8 @@ final class Service
                 return $this->buildNotePayload($document);
             case 'summary':
                 return $this->buildSummaryPayload($document);
+            case 'voided':
+                return $this->buildVoidedPayload($document);
             default:
                 return $this->buildInvoicePayload($document);
         }
@@ -241,6 +243,38 @@ final class Service
             }
 
             return $item;
+        })->filter()->values()->toArray();
+    }
+
+    private function buildVoidedPayload($voided): array
+    {
+        $parts       = explode('-', $voided->identifier ?? '');
+        $correlativo = (int) end($parts);
+
+        return [
+            'idTransaccionRequest' => $voided->identifier ?? $voided->filename,
+            'versionUBL'           => '2.0',
+            'correlativo'          => $correlativo,
+            'identificador'        => 'RA',
+            'fechaGeneracion'      => \Carbon\Carbon::now()->format('Y-m-d'),
+            'fechaComunicacion'    => \Carbon\Carbon::now()->format('Y-m-d'),
+            'plataforma'           => ['codigoPlataforma' => 'SAFEBILLPRO'],
+            'detallesVoided'       => $this->buildVoidedItems($voided),
+        ];
+    }
+
+    private function buildVoidedItems($voided): array
+    {
+        return $voided->documents->map(function ($voidedDoc) {
+            $doc = $voidedDoc->document;
+            if (!$doc) return null;
+
+            return [
+                'tipoDocumento' => $doc->document_type_id,
+                'serie'         => $doc->series,
+                'correlativo'   => (int) $doc->number,
+                'motivoBaja'    => $voidedDoc->description ?? 'Error en el documento',
+            ];
         })->filter()->values()->toArray();
     }
 
