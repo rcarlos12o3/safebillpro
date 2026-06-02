@@ -56,10 +56,10 @@ final class Service
         $id     = $this->createDocument($payload, $endpoints['create'], $token);
         $result = $this->sendToSunat($id, $endpoints['send'], $token);
 
-        // Summaries/voided son siempre asíncronos — guardar el id del registro de envío
-        // para consultar el CDR luego con querySummary() vía ask/{id}.
+        // Summaries/voided son siempre asíncronos — guardar create id y ticket por separado.
+        // ask/{create_id} + ticket en body.
         if (!empty($endpoints['async'])) {
-            $result['provider_doc_id'] = $result['send_doc_id'] ?? $id;
+            $result['provider_doc_id'] = $id; // create id (usado en ask/{id})
             return $result;
         }
 
@@ -72,15 +72,15 @@ final class Service
     }
 
     /**
-     * Consulta el CDR de un summary/voided por su ID de proveedor.
+     * Consulta el CDR de un summary/voided por su ID de proveedor + ticket.
      * Llamado desde Facturalo::pseQuerySummary() para el nuevo proveedor.
      */
-    public function querySummaryById(int $providerDocId, string $facturaloType): array
+    public function querySummaryById(int $providerDocId, string $facturaloType, ?string $ticket = null): array
     {
         $token     = $this->getToken();
         $endpoints = $this->resolveEndpoints($facturaloType);
 
-        return $this->pollCdrById($providerDocId, $endpoints['poll'], $token);
+        return $this->pollCdrById($providerDocId, $endpoints['poll'], $token, 5, $ticket);
     }
 
     // -------------------------------------------------------------------------
@@ -392,15 +392,18 @@ final class Service
         ];
     }
 
-    /** Polling por ID de proveedor: POST /api/v2/summary/ask/{id} */
-    public function pollCdrById(int $id, string $pollUrl, string $token, int $maxAttempts = 5): array
+    /** Polling por ID de proveedor: POST /api/v2/summary/ask/{id} con ticket en body */
+    public function pollCdrById(int $id, string $pollUrl, string $token, int $maxAttempts = 5, ?string $ticket = null): array
     {
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             sleep(15);
 
-            $response = $this->http->post("{$pollUrl}/{$id}", [
-                'headers' => ['Authorization' => 'Bearer ' . $token],
-            ]);
+            $options = ['headers' => ['Authorization' => 'Bearer ' . $token]];
+            if ($ticket) {
+                $options['json'] = ['ticket' => $ticket];
+            }
+
+            $response = $this->http->post("{$pollUrl}/{$id}", $options);
 
             $status = $response->getStatusCode();
             $data   = json_decode($response->getBody(), true);

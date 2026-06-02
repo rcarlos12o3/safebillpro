@@ -1181,15 +1181,16 @@ class Facturalo
     public function pseQuerySummary()
     {
         if ($this->isNewPseProvider()) {
-            $stored = $this->document->response_send_cdr_pse; // getter ya devuelve objeto decodificado
+            $stored        = $this->document->response_send_cdr_pse; // getter ya devuelve objeto decodificado
             $providerDocId = $stored->provider_doc_id ?? null;
+            $ticket        = $stored->ticket ?? null;
 
             if (!$providerDocId) {
                 throw new Exception('PSE NuevoProveedor - No se encontró el ID del documento en el proveedor para consultar el CDR.');
             }
 
             $newService = new NewProviderService($this->company);
-            $response   = $newService->querySummaryById((int) $providerDocId, $this->type);
+            $response   = $newService->querySummaryById((int) $providerDocId, $this->type, $ticket);
 
             $cdrCode = $response['code'] ?? null;
 
