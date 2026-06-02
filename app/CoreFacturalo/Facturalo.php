@@ -1114,7 +1114,7 @@ class Facturalo
 
             $this->document->update([
                 'send_to_pse'           => true,
-                'response_send_cdr_pse' => json_encode($response),
+                'response_send_cdr_pse' => $response, // setter del modelo hace json_encode
             ]);
 
             if (!empty($response['ticket'])) {
@@ -1181,8 +1181,8 @@ class Facturalo
     public function pseQuerySummary()
     {
         if ($this->isNewPseProvider()) {
-            $stored = json_decode($this->document->response_send_cdr_pse, true);
-            $providerDocId = $stored['provider_doc_id'] ?? null;
+            $stored = $this->document->response_send_cdr_pse; // getter ya devuelve objeto decodificado
+            $providerDocId = $stored->provider_doc_id ?? null;
 
             if (!$providerDocId) {
                 throw new Exception('PSE NuevoProveedor - No se encontró el ID del documento en el proveedor para consultar el CDR.');
@@ -1216,7 +1216,7 @@ class Facturalo
 
             $this->document->update([
                 'soap_shipping_response' => $this->response,
-                'response_send_cdr_pse'  => json_encode($response),
+                'response_send_cdr_pse'  => $response, // setter del modelo hace json_encode
             ]);
             return;
         }
