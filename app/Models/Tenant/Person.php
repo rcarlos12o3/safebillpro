@@ -155,6 +155,7 @@
             'discount_type',
             'discount_amount',
             'establishment_code',
+            'establishment_id',
         ];
 
         protected $casts = [
@@ -170,6 +171,7 @@
             'accumulated_points' => 'float',
             'has_discount' => 'bool',
             'discount_amount' => 'float',
+            'establishment_id' => 'int',
         ];
 
         // protected static function boot()
@@ -772,6 +774,14 @@
             return $this->belongsTo(User::class, 'seller_id');
         }
 
+        /**
+         * @return BelongsTo
+         */
+        public function establishment()
+        {
+            return $this->belongsTo(Establishment::class, 'establishment_id');
+        }
+
         public function scopeSearchCustomer(Builder $query,$dni_ruc,$name=null,$email=null){
             $query->where('type','customers');
             $query->where('number',$dni_ruc);
@@ -808,6 +818,31 @@
                 {
                     return $query->where('seller_id', $user->id);
                 }
+            }
+
+            return $query;
+        }
+
+        /**
+         *
+         * Filtrar por establishment_id
+         *
+         * Nota: El cliente especial "Clientes - Varios" (99999999) siempre es visible
+         * independientemente del filtro de tienda
+         *
+         * @param \Illuminate\Database\Eloquent\Builder $query
+         * @param int|null $establishment_id
+         * @return \Illuminate\Database\Eloquent\Builder
+         */
+        public function scopeWhereEstablishmentId($query, $establishment_id)
+        {
+            if($establishment_id && $establishment_id !== 'all')
+            {
+                return $query->where(function($q) use ($establishment_id) {
+                    $q->where('establishment_id', $establishment_id)
+                      ->orWhereNull('establishment_id')
+                      ->orWhere('number', '99999999');
+                });
             }
 
             return $query;
