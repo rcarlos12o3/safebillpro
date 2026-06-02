@@ -15,7 +15,7 @@ final class Service
     public function __construct(Company $company)
     {
         $this->company = $company;
-        $this->http = new Client(['verify' => false]);
+        $this->http = new Client(['verify' => false, 'http_errors' => false]);
     }
 
     private function baseUrl(): string
@@ -165,6 +165,7 @@ final class Service
             'totalOExoneradas'     => (float) ($document->total_exonerated ?? 0),
             'totalOInafectas'      => (float) ($document->total_unaffected ?? 0),
             'totalIGV'             => (float) ($document->total_igv ?? 0),
+            'totalIcbper'          => (float) ($document->total_plastic_bag_taxes ?? 0),
             'totalImpuestos'       => (float) ($document->total_taxes ?? 0),
             'totalValorVenta'      => (float) ($document->total_value ?? 0),
             'totalVenta'           => (float) ($document->total ?? 0),
