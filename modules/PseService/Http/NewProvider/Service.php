@@ -168,7 +168,7 @@ final class Service
             'totalVenta'           => (float) ($document->total ?? 0),
             'cliente'              => $this->buildCliente($document->customer),
             'detallesInvoice'      => $this->buildItems($document),
-            'plataforma'           => ['codigoPlataforma' => $this->company->user_pse ?? ''],
+            'plataforma'           => ['codigoPlataforma' => 'SAFEBILLPRO'],
         ];
     }
 
@@ -205,7 +205,7 @@ final class Service
             'fechaResumen'         => $summary->date_of_reference
                                         ? $summary->date_of_reference->format('Y-m-d')
                                         : $summary->date_of_issue->format('Y-m-d'),
-            'plataforma'           => ['codigoPlataforma' => $this->company->user_pse ?? ''],
+            'plataforma'           => ['codigoPlataforma' => 'SAFEBILLPRO'],
             'detallesSummary'      => $this->buildSummaryItems($summary),
         ];
     }
