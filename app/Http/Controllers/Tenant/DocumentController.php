@@ -936,8 +936,13 @@ class DocumentController extends Controller
         $document = Document::find($document_id);
 
         $fact = DB::connection('tenant')->transaction(function () use ($document) {
+            $type = 'invoice';
+            if ($document->document_type_id === '07') $type = 'credit';
+            if ($document->document_type_id === '08') $type = 'debit';
+
             $facturalo = new Facturalo();
             $facturalo->setDocument($document);
+            $facturalo->setType($type);
             $facturalo->loadXmlSigned();
             if ($facturalo->isNewPseProvider()) {
                 $hasSendPse = 'NEW_PROVIDER';
