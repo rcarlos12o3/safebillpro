@@ -95,8 +95,8 @@ final class Service
             case 'credit':
             case 'debit':
                 return [
-                    'create' => "{$base}/api/v2/electronic-note",
-                    'send'   => "{$base}/api/v2/electronic-note/send",
+                    'create' => "{$base}/api/v2/note",
+                    'send'   => "{$base}/api/v2/note/send",
                     'poll'   => null,
                     'async'  => false,
                 ];
@@ -177,21 +177,46 @@ final class Service
 
     private function buildNotePayload($document): array
     {
-        $payload = $this->buildInvoicePayload($document);
-        unset($payload['tipoOperacion']);
-
         $note = $document->note;
-        if ($note) {
-            $payload['tipoNota']   = $note->note_type_id ?? null;
-            $payload['motivoNota'] = $note->note_concept_id ?? null;
-            $payload['documentoAfectado'] = [
-                'tipoDoc'     => $note->affected_document_type_id ?? null,
-                'serie'       => $note->affected_document_series ?? null,
-                'correlativo' => $note->affected_document_number ? (int) $note->affected_document_number : null,
-            ];
-        }
 
-        return $payload;
+        // Documento afectado: primero por relación, luego por data_affected_document (JSON)
+        $affectedDoc     = $note ? $note->affected_document : null;
+        $affectedData    = $note ? $note->data_affected_document : null;
+
+        $tipoDocAfectado = $affectedDoc->document_type_id
+                        ?? ($affectedData->document_type_id ?? null);
+
+        $numeroAfectado  = $note ? $note->getAffectedDocumentNumberFull() : null;
+
+        $codigoMotivo    = $document->document_type_id === '07'
+                        ? ($note->note_credit_type_id ?? null)
+                        : ($note->note_debit_type_id ?? null);
+
+        $descripcionMotivo = $note->note_description ?? null;
+
+        return [
+            'idTransaccionRequest'    => $document->series . '-' . $document->number,
+            'versionUBL'              => $document->ubl_version ?? '2.1',
+            'tipoDocumento'           => $document->document_type_id,
+            'serie'                   => $document->series,
+            'correlativo'             => (int) $document->number,
+            'fechaEmision'            => $document->date_of_issue->format('Y-m-d'),
+            'tipoDocumentoAfectado'   => $tipoDocAfectado,
+            'numeroDocumentoAfectado' => $numeroAfectado,
+            'codigoMotivo'            => $codigoMotivo,
+            'descripcionMotivo'       => $descripcionMotivo,
+            'tipoMoneda'              => $document->currency_type_id,
+            'totalOGravadas'          => (float) ($document->total_taxed ?? 0),
+            'totalOExoneradas'        => (float) ($document->total_exonerated ?? 0),
+            'totalOInafectas'         => (float) ($document->total_unaffected ?? 0),
+            'totalIcbper'             => (float) ($document->total_plastic_bag_taxes ?? 0),
+            'totalImpuestos'          => (float) ($document->total_taxes ?? 0),
+            'totalValorVenta'         => (float) ($document->total_value ?? 0),
+            'totalVenta'              => (float) ($document->total ?? 0),
+            'cliente'                 => $this->buildNoteCliente($document->customer),
+            'detallesElectronicNote'  => $this->buildNoteItems($document),
+            'plataforma'              => ['codigoPlataforma' => 'SAFEBILLPRO'],
+        ];
     }
 
     private function buildSummaryPayload($summary): array
@@ -279,6 +304,47 @@ final class Service
                 'motivoBaja'    => $voidedDoc->description ?? 'Error en el documento',
             ];
         })->filter()->values()->toArray();
+    }
+
+    private function buildNoteCliente($customer): array
+    {
+        $tipoMap = ['1' => '1', '4' => '4', '6' => '6', '7' => '7', 'A' => '0'];
+        $rawTipo = $customer->identity_document_type_id ?? '-';
+        $tipo    = $tipoMap[$rawTipo] ?? '0';
+
+        return [
+            'tipoDocumento'   => $tipo,
+            'numeroDocumento' => $customer->number ?? '',
+            'denominacion'    => $customer->name ?? '',
+        ];
+    }
+
+    private function buildNoteItems($document): array
+    {
+        return $document->items->map(function ($docItem) {
+            $item   = $docItem->item;
+            $codigo = $item->internal_id ?? $item->code ?? null;
+            $result = [
+                'codigoProducto'    => $codigo ?: 'S/C',
+                'descripcion'       => $item->description ?? $item->name ?? '',
+                'cantidad'          => (float) $docItem->quantity,
+                'unidad'            => $item->unit_type_id ?? 'NIU',
+                'mtoValorUnitario'  => (float) $docItem->unit_value,
+                'mtoValorVenta'     => (float) $docItem->total_value,
+                'mtoBaseIgv'        => (float) $docItem->total_base_igv,
+                'porcentajeIgv'     => (float) $docItem->percentage_igv,
+                'igv'               => (float) $docItem->total_igv,
+                'tipAfeIgv'         => $docItem->affectation_igv_type_id ?? '10',
+                'totalImpuestos'    => (float) $docItem->total_taxes,
+                'mtoPrecioUnitario' => (float) $docItem->unit_price,
+                'mtoValorGratuito'  => 0.00,
+            ];
+            $icbper = (float) ($docItem->total_plastic_bag_taxes ?? 0);
+            if ($icbper > 0) {
+                $result['icbper'] = $icbper;
+            }
+            return $result;
+        })->toArray();
     }
 
     private function buildCliente($customer): array
