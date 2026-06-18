@@ -5,6 +5,32 @@
                 :close-on-press-escape="false"
                 :show-close="false">
             <div class="row">
+                <div class="col-lg-12">
+                    <div class="form-group">
+                        <label class="control-label">Receptor</label>
+                        <div class="d-flex align-items-center">
+                            <el-select
+                                v-model="document.customer_id"
+                                filterable
+                                remote
+                                reserve-keyword
+                                placeholder="Buscar por nombre o número de documento"
+                                :remote-method="searchRemoteCustomers"
+                                :loading="loading_search"
+                                @change="selectCustomer"
+                                style="flex: 1"
+                            >
+                                <el-option
+                                    v-for="item in customers"
+                                    :key="item.id"
+                                    :value="item.id"
+                                    :label="item.description"
+                                ></el-option>
+                            </el-select>
+                            <a href="#" @click.prevent="showDialogNewPerson = true" class="ml-2">[+ Nuevo]</a>
+                        </div>
+                    </div>
+                </div>
                 <div class="col-lg-8">
                     <div class="form-group" :class="{'has-danger': errors.document_type_id}">
                         <label class="control-label">Tipo comprobante</label>
@@ -257,6 +283,15 @@
                 <br>
             </div>
         </el-dialog>
+
+        <person-form
+            :showDialog.sync="showDialogNewPerson"
+            type="customers"
+            :external="true"
+            :input_person="input_person"
+            :document_type_id="document.document_type_id"
+        ></person-form>
+
     </div>
 </template>
 
@@ -266,9 +301,10 @@
     import moment from "moment";
     import ListRestrictItems from '@components/secondary/ListRestrictItems.vue'
     import {fnRestrictSaleItemsCpe} from '@mixins/functions'
+    import PersonForm from '../../persons/form.vue'
 
     export default {
-        components: {DocumentOptions, ListRestrictItems},
+        components: {DocumentOptions, ListRestrictItems, PersonForm},
         mixins: [
             fnRestrictSaleItemsCpe
         ],
@@ -307,11 +343,19 @@
                 configuration: {},
                 global_discount_types: [],
                 load_list_document_items: false,
+                customers: [],
+                loading_search: false,
+                showDialogNewPerson: false,
+                input_person: {},
+                override_customer: null,
             }
         },
         created() {
             this.initForm()
             this.initDocument()
+            this.$eventHub.$on('reloadDataPersons', (customer_id) => {
+                this.reloadDataCustomers(customer_id)
+            })
 
            // console.log(moment().format('YYYY-MM-DD'))
         },
@@ -396,6 +440,9 @@
                     sale_note:null,
                 }
                 this.generate_dispatch = false
+                this.override_customer = null
+                this.customers = []
+                this.input_person = {}
             },
             initDocument(){
                 this.document = {
@@ -689,6 +736,14 @@
                 await this.$http.get(`/${this.resource}/record/${this.recordId}`)
                     .then(response => {
                         this.form = response.data.data
+                        const c = this.form.sale_note.customer
+                        this.customers = [{
+                            id: this.form.sale_note.customer_id,
+                            description: c.number + ' - ' + c.name,
+                            identity_document_type_id: c.identity_document_type_id,
+                            name: c.name,
+                            number: c.number,
+                        }]
                         this.validateIdentityDocumentType()
 
                         this.assignDocument();
@@ -705,23 +760,50 @@
             changeDocumentType() {
                 this.filterSeries();
             },
-            async validateIdentityDocumentType(){
+            async validateIdentityDocumentType(customerOverride = null){
 
+                const customer = customerOverride || this.form.sale_note.customer
                 let identity_document_types = ['0','1']
 
-
-                if(identity_document_types.includes(this.form.sale_note.customer.identity_document_type_id)){
-
+                if(identity_document_types.includes(customer.identity_document_type_id)){
                     this.document_types = _.filter(this.all_document_types,{'id':'03'})
-
                 }else{
                     this.document_types = this.all_document_types
-
                 }
 
                 this.document.document_type_id = (this.document_types.length > 0)?this.document_types[0].id:null
                 await this.changeDocumentType()
 
+            },
+            searchRemoteCustomers(input) {
+                if (input.length > 0) {
+                    this.loading_search = true
+                    const establishmentId = this.form.sale_note ? this.form.sale_note.establishment_id : ''
+                    this.$http.get(`/sale-notes/search/customers?input=${input}&establishment_id=${establishmentId}`)
+                        .then(response => {
+                            this.customers = response.data.customers
+                            this.input_person.number = (this.customers.length === 0) ? input : null
+                        })
+                        .finally(() => { this.loading_search = false })
+                }
+            },
+            selectCustomer(customerId) {
+                const customer = _.find(this.customers, { id: customerId })
+                if (customer) {
+                    this.override_customer = customer
+                    this.validateIdentityDocumentType(customer)
+                }
+            },
+            reloadDataCustomers(customer_id) {
+                this.$http.get(`/sale-notes/search/customer/${customer_id}`)
+                    .then(response => {
+                        const newCustomers = response.data.customers
+                        this.customers = newCustomers
+                        if (newCustomers.length > 0) {
+                            this.document.customer_id = customer_id
+                            this.selectCustomer(customer_id)
+                        }
+                    })
             },
             filterSeries() {
                 this.document.series_id = null
