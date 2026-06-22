@@ -254,6 +254,10 @@ class Facturalo
             // if $this->sendToPse(); // deprecated
             $this->xmlSigned = base64_decode($pse_xml_signed);
 
+        }elseif($this->isNewPseProvider()){
+            // El nuevo proveedor PSE firma el XML internamente al enviar; no se firma localmente
+            return $this;
+
         }else{
 
             $this->setPathCertificate();

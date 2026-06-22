@@ -16,7 +16,6 @@ class Functions
         if ($number === '#') {
 
             $document = $model::select('number')
-                                    ->where('soap_type_id', $soap_type_id)
                                     ->where('document_type_id', $document_type_id)
                                     ->where('series', $series)
                                     ->orderBy('number', 'desc')
