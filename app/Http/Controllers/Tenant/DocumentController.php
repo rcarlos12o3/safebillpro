@@ -943,13 +943,11 @@ class DocumentController extends Controller
             $facturalo = new Facturalo();
             $facturalo->setDocument($document);
             $facturalo->setType($type);
-            $facturalo->loadXmlSigned();
             if ($facturalo->isNewPseProvider()) {
                 $hasSendPse = 'NEW_PROVIDER';
-            } elseif ($facturalo->hasPseSend()) {
-                $hasSendPse = '200';
             } else {
-                $hasSendPse = null;
+                $facturalo->loadXmlSigned();
+                $hasSendPse = $facturalo->hasPseSend() ? '200' : null;
             }
             $facturalo->onlySenderXmlSignedBill($hasSendPse);
             return $facturalo;
