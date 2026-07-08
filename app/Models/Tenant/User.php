@@ -505,26 +505,19 @@ $modules_levels = []){
         $total_modules = count($module_array);
         for ($i = 0; $i < $total_modules; $i++) {
             $item = (int)$module_array[$i];
-            $module_ = $work
-                ->where([
-                            'module_id' => $item,
-
-                        ])->first();
+            $module_ = DB::connection('tenant')
+                ->table('module_user')
+                ->where($user_array)
+                ->where('module_id', $item)
+                ->first();
             if (empty($module_)) {
                 $user_array['module_id'] = $item;
                 $work->insert($user_array);
+                unset($user_array['module_id']);
             }
         }
-        unset($user_array['module_id']);
 
         $levels_array =$modules_levels;
-
-        // DEBUG: Ver qué levels se están procesando
-        \Log::info('=== DEBUG setModuleAndLevelModule ===');
-        \Log::info('User ID: ' . $this->id);
-        \Log::info('Levels array recibido: ' . json_encode($levels_array));
-        \Log::info('Total levels: ' . count($levels_array));
-        \Log::info('¿Contiene 95?', ['exists' => in_array(95, $levels_array ?? []) || in_array('95', $levels_array ?? [])]);
 
         $work =DB::connection('tenant')
                  ->table('module_level_user')
@@ -534,29 +527,22 @@ $modules_levels = []){
  $levels_array)
                         ->delete();
 
-        \Log::info('Registros eliminados: ' . $deletes);
-
         $total_modules_levels = count($levels_array);
 
         for ($i = 0; $i < $total_modules_levels; $i++) {
             $item = (int)$levels_array[$i];
 
-            \Log::info("Procesando level $i: ID=$item (tipo: " . gettype($item) . ")");
-
-            $module_ = $work
-                ->where([
-                            'module_level_id' => $item,
-
-                        ])->first();
+            $module_ = DB::connection('tenant')
+                ->table('module_level_user')
+                ->where($user_array)
+                ->where('module_level_id', $item)
+                ->first();
             if (empty($module_)) {
                 $user_array['module_level_id'] = $item;
-                \Log::info("Insertando level_id=$item para user_id=" . $this->id);
                 $work->insert($user_array);
-            } else {
-                \Log::info("Level $item ya existe, omitiendo");
+                unset($user_array['module_level_id']);
             }
         }
-        \Log::info('=====================================');
         return $this;
     }
 
