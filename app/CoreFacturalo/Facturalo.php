@@ -1041,6 +1041,13 @@ class Facturalo
 
     public function validationCodeResponse($code, $message)
     {
+        // SUNAT respondió sin error de protocolo pero sin CDR utilizable: se deja el
+        // comprobante en su estado actual (Registrado) en vez de perderlo, y el job de
+        // consulta de CDR resuelve el estado real más adelante.
+        if($code === 'ERROR_CDR') {
+            return;
+        }
+
         //Errors
         if(!is_numeric($code)){
 
@@ -1052,9 +1059,6 @@ class Facturalo
             return;
         }
         //dd($message);
-        // if($code === 'ERROR_CDR') {
-        //     return;
-        // }
 
         // if($code === 'HTTP') {
         //     // $message = 'La SUNAT no responde a su solicitud, vuelva a intentarlo.';

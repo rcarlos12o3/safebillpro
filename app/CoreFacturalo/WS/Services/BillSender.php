@@ -3,6 +3,7 @@
 namespace App\CoreFacturalo\WS\Services;
 
 use App\CoreFacturalo\WS\Response\BillResult;
+use App\CoreFacturalo\WS\Response\Error;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -60,12 +61,27 @@ class BillSender extends BaseSunat
                 'cdr_zip_first_bytes' => is_string($cdrZip) && strlen($cdrZip) > 0 ? bin2hex(substr($cdrZip, 0, 20)) : 'N/A'
             ]);
 
-            $result
-                ->setCdrResponse($this->extractResponse($cdrZip))
-                ->setCdrZip($cdrZip)
-                ->setSuccess(true);
+            try {
+                $result
+                    ->setCdrResponse($this->extractResponse($cdrZip))
+                    ->setCdrZip($cdrZip)
+                    ->setSuccess(true);
 
-            Log::info('BillSender: Envío exitoso', ['filename' => $filename]);
+                Log::info('BillSender: Envío exitoso', ['filename' => $filename]);
+            } catch (\Exception $e) {
+                // SUNAT respondió sin SoapFault pero sin un CDR utilizable: no sabemos si el
+                // comprobante fue aceptado o no. Se marca como pendiente (ERROR_CDR) en vez de
+                // relanzar la excepción, para no perder el registro del comprobante y dejar que
+                // el job de consulta de CDR reconcilie el estado real más adelante.
+                Log::warning('BillSender: CDR no disponible pese a respuesta SOAP exitosa, se marca pendiente de confirmación', [
+                    'filename' => $filename,
+                    'message' => $e->getMessage()
+                ]);
+
+                $result
+                    ->setCdrZip($cdrZip)
+                    ->setError(new Error('ERROR_CDR', $e->getMessage()));
+            }
 
         } catch (\SoapFault $e) {
             Log::error('BillSender: SoapFault capturado', [

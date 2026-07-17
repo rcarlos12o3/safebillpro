@@ -933,32 +933,38 @@ class DocumentController extends Controller
 
     public function send($document_id)
     {
-        $document = Document::find($document_id);
+        try {
+            $document = Document::find($document_id);
 
-        $fact = DB::connection('tenant')->transaction(function () use ($document) {
-            $type = 'invoice';
-            if ($document->document_type_id === '07') $type = 'credit';
-            if ($document->document_type_id === '08') $type = 'debit';
+            $fact = DB::connection('tenant')->transaction(function () use ($document) {
+                $type = 'invoice';
+                if ($document->document_type_id === '07') $type = 'credit';
+                if ($document->document_type_id === '08') $type = 'debit';
 
-            $facturalo = new Facturalo();
-            $facturalo->setDocument($document);
-            $facturalo->setType($type);
-            if ($facturalo->isNewPseProvider()) {
-                $hasSendPse = 'NEW_PROVIDER';
-            } else {
-                $facturalo->loadXmlSigned();
-                $hasSendPse = $facturalo->hasPseSend() ? '200' : null;
-            }
-            $facturalo->onlySenderXmlSignedBill($hasSendPse);
-            return $facturalo;
-        });
+                $facturalo = new Facturalo();
+                $facturalo->setDocument($document);
+                $facturalo->setType($type);
+                if ($facturalo->isNewPseProvider()) {
+                    $hasSendPse = 'NEW_PROVIDER';
+                } else {
+                    $facturalo->loadXmlSigned();
+                    $hasSendPse = $facturalo->hasPseSend() ? '200' : null;
+                }
+                $facturalo->onlySenderXmlSignedBill($hasSendPse);
+                return $facturalo;
+            });
 
-        $response = $fact->getResponse();
+            $response = $fact->getResponse();
 
-        return [
-            'success' => true,
-            'message' => $response['description'],
-        ];
+            return [
+                'success' => true,
+                'message' => $response['description'],
+            ];
+        } catch (Exception $e) {
+            $this->generalWriteErrorLog($e);
+
+            return $this->generalResponse(false, 'No se pudo enviar el comprobante a SUNAT, intente nuevamente en unos minutos.');
+        }
     }
 
     public function consultCdr($document_id)
