@@ -352,6 +352,7 @@ class ServiceDispatchController extends Controller
             'packages_number' => $record->packages_number,
             'transport_mode_type_id' => $record->transport_mode_type_id,
             'date_of_shipping' => $record->date_of_shipping->format('Y-m-d'),
+            'date_delivery_to_transport' => $record->date_delivery_to_transport ? $record->date_delivery_to_transport->format('Y-m-d') : null,
             'observations' => $record->observations,
             'filename' => $record->filename,
             'origin_location_id' => optional($record->origin)->location_id,

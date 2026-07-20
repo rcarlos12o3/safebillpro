@@ -66,6 +66,9 @@ class DispatchRequest extends FormRequest
             'transport_mode_type_id'=> [
                 'required_if:document_type_id, "09"',
             ],
+            'date_delivery_to_transport'=> [
+                'required_if:transport_mode_type_id, "01"',
+            ],
             'transfer_reason_type_id'=> [
                 'required_if:document_type_id, "09"',
             ],
