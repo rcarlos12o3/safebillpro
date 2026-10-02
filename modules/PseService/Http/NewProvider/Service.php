@@ -15,7 +15,12 @@ final class Service
     public function __construct(Company $company)
     {
         $this->company = $company;
-        $this->http = new Client(['verify' => false, 'http_errors' => false]);
+        // Accept JSON: sin esto el proveedor (Laravel) devuelve los errores como HTML
+        $this->http = new Client([
+            'verify'      => false,
+            'http_errors' => false,
+            'headers'     => ['Accept' => 'application/json'],
+        ]);
     }
 
     private function baseUrl(): string
@@ -213,8 +218,8 @@ final class Service
             'totalImpuestos'          => (float) ($document->total_taxes ?? 0),
             'totalValorVenta'         => (float) ($document->total_value ?? 0),
             'totalVenta'              => (float) ($document->total ?? 0),
-            'cliente'                 => $this->buildNoteCliente($document->customer),
-            'detallesElectronicNote'  => $this->buildNoteItems($document),
+            'cliente'                 => $this->buildCliente($document->customer),
+            'detallesElectronicNote'  => $this->buildItems($document),
             'plataforma'              => ['codigoPlataforma' => 'SAFEBILLPRO'],
         ];
     }
@@ -306,47 +311,6 @@ final class Service
         })->filter()->values()->toArray();
     }
 
-    private function buildNoteCliente($customer): array
-    {
-        $tipoMap = ['1' => '1', '4' => '4', '6' => '6', '7' => '7', 'A' => '0'];
-        $rawTipo = $customer->identity_document_type_id ?? '-';
-        $tipo    = $tipoMap[$rawTipo] ?? '0';
-
-        return [
-            'tipoDocumento'   => $tipo,
-            'numeroDocumento' => $customer->number ?? '',
-            'denominacion'    => $customer->name ?? '',
-        ];
-    }
-
-    private function buildNoteItems($document): array
-    {
-        return $document->items->map(function ($docItem) {
-            $item   = $docItem->item;
-            $codigo = $item->internal_id ?? $item->code ?? null;
-            $result = [
-                'codigoProducto'    => $codigo ?: 'S/C',
-                'descripcion'       => $item->description ?? $item->name ?? '',
-                'cantidad'          => (float) $docItem->quantity,
-                'unidad'            => $item->unit_type_id ?? 'NIU',
-                'mtoValorUnitario'  => (float) $docItem->unit_value,
-                'mtoValorVenta'     => (float) $docItem->total_value,
-                'mtoBaseIgv'        => (float) $docItem->total_base_igv,
-                'porcentajeIgv'     => (float) $docItem->percentage_igv,
-                'igv'               => (float) $docItem->total_igv,
-                'tipAfeIgv'         => $docItem->affectation_igv_type_id ?? '10',
-                'totalImpuestos'    => (float) $docItem->total_taxes,
-                'mtoPrecioUnitario' => (float) $docItem->unit_price,
-                'mtoValorGratuito'  => 0.00,
-            ];
-            $icbper = (float) ($docItem->total_plastic_bag_taxes ?? 0);
-            if ($icbper > 0) {
-                $result['icbper'] = $icbper;
-            }
-            return $result;
-        })->toArray();
-    }
-
     private function buildCliente($customer): array
     {
         // Mapear tipo SUNAT → código que acepta el proveedor
@@ -417,12 +381,17 @@ final class Service
         ]);
 
         $status = $response->getStatusCode();
-        $data   = json_decode($response->getBody(), true);
+        $body   = (string) $response->getBody();
+        $data   = json_decode($body, true);
 
-        Log::info('PSE NuevoProveedor - createDocument', ['status' => $status, 'response' => $data]);
+        Log::info('PSE NuevoProveedor - createDocument', [
+            'status'   => $status,
+            'response' => $data ?? mb_substr($body, 0, 2000),
+        ]);
 
         if (($status !== 200 && $status !== 201) || empty($data['id'])) {
-            throw new Exception('PSE NuevoProveedor - Create error. Status: ' . $status . '. ' . json_encode($data));
+            Log::info('PSE NuevoProveedor - createDocument payload', ['payload' => $payload]);
+            throw new Exception('PSE NuevoProveedor - Create error. Status: ' . $status . '. ' . ($data !== null ? json_encode($data) : mb_substr($body, 0, 500)));
         }
 
         return (int) $data['id'];
