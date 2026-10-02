@@ -95,8 +95,8 @@ final class Service
             case 'credit':
             case 'debit':
                 return [
-                    'create' => "{$base}/api/v2/note",
-                    'send'   => "{$base}/api/v2/note/send",
+                    'create' => "{$base}/api/v2/electronic-note",
+                    'send'   => "{$base}/api/v2/electronic-note/send",
                     'poll'   => null,
                     'async'  => false,
                 ];
